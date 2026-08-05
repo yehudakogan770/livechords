@@ -129,3 +129,13 @@ export function IconCamera(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function IconPrinter(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Svg {...props}>
+      <path d="M6 9V3h12v6" />
+      <rect x="4" y="9" width="16" height="8" rx="2" />
+      <path d="M6 14h12v7H6z" />
+    </Svg>
+  );
+}
+

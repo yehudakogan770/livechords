@@ -74,7 +74,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6">
+    <div className="mx-auto max-w-3xl px-4 py-6">
       <h1 className="mb-4 text-xl font-semibold">Settings</h1>
 
       <div className="flex flex-col gap-6">

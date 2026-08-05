@@ -24,6 +24,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   accidentalPreference: 'auto',
   keepScreenAwake: true,
   autoAdvanceToNextInSetlist: true,
+  libraryGrouping: 'title',
 };
 
 function readJson<T>(key: string, fallback: T): T {
@@ -59,7 +60,11 @@ function ensureSeeded(): void {
 
 export function getSongs(): Song[] {
   ensureSeeded();
-  return readJson<Song[]>(KEYS.songs, []).sort((a, b) => a.title.localeCompare(b.title));
+  // `style` was added after songs could already exist in a browser's localStorage,
+  // so backfill it defensively rather than assuming every stored Song has it.
+  return readJson<Song[]>(KEYS.songs, [])
+    .map((s) => ({ ...s, style: s.style ?? '' }))
+    .sort((a, b) => a.title.localeCompare(b.title));
 }
 
 export function getSong(id: string): Song | undefined {
@@ -76,6 +81,7 @@ export function createSong(input: NewSong): Song {
     id: newId(),
     title: input.title,
     artist: input.artist,
+    style: input.style,
     originalKey: input.originalKey,
     bpm: input.bpm,
     content: input.content,

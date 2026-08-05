@@ -9,7 +9,7 @@ import StagePage from './pages/StagePage';
 
 function AppLayout() {
   return (
-    <div className="bg-stage-bg text-stage-text min-h-dvh">
+    <div className="bg-stage-bg text-stage-text min-h-dvh print:bg-white print:text-black">
       <NavBar />
       <main>
         <Outlet />

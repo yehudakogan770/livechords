@@ -14,6 +14,19 @@ bands, and solo gigging musicians.
 
 - **Chords + lyrics display** with chords positioned exactly above the
   syllable they change on, rendered large enough to read from across a stage.
+  Auto-scroll reads through a fixed line at the middle of the screen —
+  teleprompter-style — so you always look at the same spot instead of
+  chasing text from the top down.
+- **Organize your library by artist or style**: every song has an optional
+  Style field (Worship, Rock, Country, ...) picked from your own previously
+  used styles plus a starter preset list, and the library can be grouped by
+  title, artist, or style — whichever makes sense for how big your set of
+  charts is getting.
+- **Print or save a chart as a PDF** — the song editor's preview has a
+  one-click "Print / Save as PDF" button (uses the browser's native print
+  pipeline, so no extra download and it works with any printer or
+  "Save as PDF" destination) for a clean black-on-white copy to keep as a
+  backup or hand to another musician.
 - **Auto-scroll synced to tempo** — new songs get a scroll speed estimated
   from their BPM, then you fine-tune it with +/- controls (or a footswitch)
   and it's remembered per song. A "Sync to tempo" button recomputes it
