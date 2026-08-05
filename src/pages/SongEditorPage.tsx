@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { ChordSheet } from '../components/ChordSheet';
 import { inputClass, labelClass } from '../components/formStyles';
-import { IconTrash } from '../components/icons';
+import { IconCamera, IconTrash } from '../components/icons';
 import { createSong, deleteSong, getSong, saveSong } from '../data/storage';
 import { parseSong } from '../lib/chordpro';
+import type { OcrProgress } from '../lib/ocr';
 import type { NewSong, Song } from '../types';
 
 const STARTER_CONTENT = `{c: Verse 1}
@@ -25,6 +26,9 @@ export default function SongEditorPage() {
   const [tags, setTags] = useState('');
   const [content, setContent] = useState(STARTER_CONTENT);
   const [error, setError] = useState<string | null>(null);
+  const [scanProgress, setScanProgress] = useState<OcrProgress | null>(null);
+  const [scanError, setScanError] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setTitle(existing?.title ?? '');
@@ -44,6 +48,31 @@ export default function SongEditorPage() {
     if (meta.artist && !artist.trim()) setArtist(meta.artist);
     if (meta.key && !originalKey.trim()) setOriginalKey(meta.key);
     if (meta.bpm && !bpm.trim()) setBpm(String(meta.bpm));
+  }
+
+  async function handlePhotoSelected(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    setScanError(null);
+    setScanProgress({ status: 'starting', progress: 0 });
+    try {
+      // Tesseract.js is sizeable and rarely used, so it's loaded on demand
+      // instead of bloating every page (including the perf-sensitive Stage View).
+      const { scanChordChartImage } = await import('../lib/ocr');
+      const scanned = await scanChordChartImage(file, setScanProgress);
+      if (!scanned.trim()) {
+        setScanError('No text could be recognized in that photo. Try a clearer, well-lit, straight-on shot.');
+        return;
+      }
+      const isBlankSlate = content.trim() === '' || content.trim() === STARTER_CONTENT.trim();
+      setContent(isBlankSlate ? scanned : `${content}\n\n${scanned}`);
+    } catch {
+      setScanError('Scan failed — check your connection (the first scan downloads a small OCR language pack).');
+    } finally {
+      setScanProgress(null);
+    }
   }
 
   function buildInput(): NewSong {
@@ -163,14 +192,47 @@ export default function SongEditorPage() {
           </div>
 
           <div>
-            <div className="mb-1 flex items-center justify-between">
+            <div className="mb-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
               <label className={labelClass + ' mb-0'} htmlFor="song-content">
                 Chords &amp; Lyrics
               </label>
-              <button type="button" onClick={fillFromContent} className="text-stage-accent text-xs font-medium">
-                Fill details from pasted chart
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => photoInputRef.current?.click()}
+                  disabled={scanProgress !== null}
+                  className="text-stage-accent flex items-center gap-1 text-xs font-medium disabled:opacity-50"
+                >
+                  <IconCamera className="h-3.5 w-3.5" />
+                  {scanProgress ? 'Scanning…' : 'Scan a photo'}
+                </button>
+                <button type="button" onClick={fillFromContent} className="text-stage-accent text-xs font-medium">
+                  Fill details from pasted chart
+                </button>
+              </div>
             </div>
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={handlePhotoSelected}
+            />
+            {scanProgress && (
+              <div className="border-stage-edge bg-stage-panel mb-2 rounded-lg border px-3 py-2 text-xs">
+                <div className="bg-stage-bg h-1.5 w-full overflow-hidden rounded-full">
+                  <div
+                    className="bg-stage-accent h-full transition-all"
+                    style={{ width: `${Math.round(scanProgress.progress * 100)}%` }}
+                  />
+                </div>
+                <p className="text-stage-muted mt-1 capitalize">
+                  {scanProgress.status.replace(/_/g, ' ')} — first scan also downloads a small OCR language pack
+                </p>
+              </div>
+            )}
+            {scanError && <p className="mb-2 text-xs text-red-400">{scanError}</p>}
             <textarea
               id="song-content"
               className={inputClass + ' h-72 font-mono text-sm leading-relaxed'}
@@ -191,6 +253,10 @@ export default function SongEditorPage() {
                 <li>
                   Pasted ChordPro directives like <code>{'{title:}'}</code>, <code>{'{artist:}'}</code>,{' '}
                   <code>{'{key:}'}</code>, <code>{'{tempo:}'}</code> are recognized by "Fill details from pasted chart"
+                </li>
+                <li>
+                  "Scan a photo" reads chords and lyrics off a printed page automatically — it's a best-effort
+                  reading, so check chord placement before saving
                 </li>
               </ul>
             </details>
