@@ -34,6 +34,15 @@ bands, and solo gigging musicians.
   finishes scrolling.
 - **Works offline** — installable as a PWA, everything is stored locally, so
   a flaky venue wifi never gets in the way of a gig.
+- **Scan a photo of a chart** in the song editor to auto-fill the chords and
+  lyrics — free, on-device OCR (no account, no API key, no per-scan cost).
+  It reads the chord line and the lyric line and lines them up by position,
+  so it's a best-effort first draft, not a guarantee — review chord
+  placement before saving, and expect better results from a flat, well-lit,
+  printed page than a skewed or handwritten one. The OCR engine itself
+  (~10–15MB) downloads from a CDN the first time you use this feature and is
+  cached by the browser afterward; everything else in the app stays free and
+  fully offline regardless of whether you ever use this feature.
 
 ## Chart format
 
@@ -63,7 +72,7 @@ That [G]saved a [Em]wretch like [D]me
 ```bash
 npm install
 npm run dev        # start the dev server
-npm test           # run the unit tests (chord parsing, transposition, scroll speed)
+npm test           # run the unit tests (chord parsing, transposition, scroll speed, OCR reconstruction)
 npm run typecheck  # TypeScript project check
 npm run build      # production build (dist/) with the PWA service worker
 ```
