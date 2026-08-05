@@ -2,11 +2,11 @@ import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { ChordSheet } from '../components/ChordSheet';
 import { inputClass, labelClass } from '../components/formStyles';
-import { IconCamera, IconTrash } from '../components/icons';
-import { createSong, deleteSong, getSong, saveSong } from '../data/storage';
+import { IconCamera, IconPrinter, IconTrash } from '../components/icons';
+import { createSong, deleteSong, getSong, getSongs, saveSong } from '../data/storage';
 import { parseSong } from '../lib/chordpro';
 import type { OcrProgress } from '../lib/ocr';
-import type { NewSong, Song } from '../types';
+import { STYLE_PRESETS, type NewSong, type Song } from '../types';
 
 const STARTER_CONTENT = `{c: Verse 1}
 [G]Type your lyrics [C]with chords [D]placed right before the [G]syllable they change on
@@ -21,6 +21,7 @@ export default function SongEditorPage() {
 
   const [title, setTitle] = useState('');
   const [artist, setArtist] = useState('');
+  const [style, setStyle] = useState('');
   const [originalKey, setOriginalKey] = useState('');
   const [bpm, setBpm] = useState('');
   const [tags, setTags] = useState('');
@@ -30,9 +31,17 @@ export default function SongEditorPage() {
   const [scanError, setScanError] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
+  const styleSuggestions = useMemo(() => {
+    const used = getSongs()
+      .map((s) => s.style)
+      .filter(Boolean);
+    return [...new Set([...STYLE_PRESETS, ...used])].sort((a, b) => a.localeCompare(b));
+  }, []);
+
   useEffect(() => {
     setTitle(existing?.title ?? '');
     setArtist(existing?.artist ?? '');
+    setStyle(existing?.style ?? '');
     setOriginalKey(existing?.originalKey ?? '');
     setBpm(existing?.bpm ? String(existing.bpm) : '');
     setTags(existing?.tags.join(', ') ?? '');
@@ -79,6 +88,7 @@ export default function SongEditorPage() {
     return {
       title: title.trim() || 'Untitled Song',
       artist: artist.trim(),
+      style: style.trim(),
       originalKey: originalKey.trim(),
       bpm: Number.parseInt(bpm, 10) || 0,
       content,
@@ -109,7 +119,7 @@ export default function SongEditorPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6">
-      <div className="mb-4 flex items-center justify-between gap-3">
+      <div className="mb-4 flex items-center justify-between gap-3 print:hidden">
         <h1 className="text-xl font-semibold">{existing ? 'Edit Song' : 'New Song'}</h1>
         {existing && (
           <button
@@ -123,8 +133,8 @@ export default function SongEditorPage() {
         )}
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <div className="flex flex-col gap-4">
+      <div className="grid gap-6 md:grid-cols-2 print:block">
+        <div className="flex flex-col gap-4 print:hidden">
           <div>
             <label className={labelClass} htmlFor="song-title">
               Title
@@ -148,6 +158,26 @@ export default function SongEditorPage() {
               onChange={(e) => setArtist(e.target.value)}
               placeholder="Traditional"
             />
+          </div>
+          <div>
+            <label className={labelClass} htmlFor="song-style">
+              Style
+            </label>
+            <input
+              id="song-style"
+              list="song-style-options"
+              className={inputClass}
+              value={style}
+              onChange={(e) => setStyle(e.target.value)}
+              placeholder="Worship, Rock, Country…"
+            />
+            <datalist id="song-style-options">
+              {styleSuggestions.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </datalist>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -289,10 +319,36 @@ export default function SongEditorPage() {
           </div>
         </div>
 
-        <div className="border-stage-edge bg-stage-panel/40 rounded-lg border p-4">
-          <p className={labelClass}>Live Preview</p>
-          <div className="overflow-x-auto">
+        <div className="border-stage-edge bg-stage-panel/40 rounded-lg border p-4 print:border-0 print:bg-transparent print:p-0">
+          <div className="mb-1 flex items-center justify-between print:hidden">
+            <p className={labelClass + ' mb-0'}>Live Preview</p>
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="text-stage-accent flex items-center gap-1 text-xs font-medium"
+            >
+              <IconPrinter className="h-3.5 w-3.5" />
+              Print / Save as PDF
+            </button>
+          </div>
+
+          {/* Print-only header — the on-screen form fields carrying this info are hidden while printing. */}
+          <div className="hidden print:mb-4 print:block">
+            <h2 className="text-lg font-bold">{title.trim() || 'Untitled Song'}</h2>
+            <p className="text-sm">
+              {[artist.trim(), style.trim(), originalKey.trim() && `Key ${originalKey.trim()}`, bpm && `${bpm} BPM`]
+                .filter(Boolean)
+                .join(' · ')}
+            </p>
+          </div>
+
+          <div className="overflow-x-auto print:hidden">
             <ChordSheet song={parsedPreview} fontSizePx={18} />
+          </div>
+          {/* A separate, larger instance for print/PDF — the on-screen preview is deliberately
+              compact to fit next to the form, but a printed chart should read like a real chart. */}
+          <div className="hidden print:block">
+            <ChordSheet song={parsedPreview} fontSizePx={26} />
           </div>
         </div>
       </div>

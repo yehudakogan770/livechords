@@ -15,6 +15,12 @@ const CONTROLS_HIDE_DELAY_MS = 4000;
 const FONT_STEP_PX = 4;
 const MIN_FONT_PX = 18;
 const MAX_FONT_PX = 120;
+// Top/bottom spacers so every line — first to last — scrolls through the
+// fixed reading-line marker at screen center, teleprompter-style, instead of
+// the performer's eye having to chase text from the top of the screen down.
+// Matches the marker's `top-1/2` position so the first line sits exactly on
+// it at rest (scrollTop 0), not just somewhere above it.
+const READING_ZONE_VH = 50;
 
 interface NavState {
   autoplay?: boolean;
@@ -186,17 +192,26 @@ export default function StagePage() {
 
   return (
     <div className="bg-stage-bg text-stage-text relative h-dvh overflow-hidden">
+      {/* Reading-line marker: the line passing through here is "now" — matching top/bottom
+          spacers below mean every line, first to last, scrolls through this fixed point
+          rather than the performer having to chase text from the top of the screen. */}
+      <div
+        aria-hidden="true"
+        className="border-stage-accent/25 pointer-events-none fixed inset-x-4 top-1/2 z-[5] border-t border-dashed sm:inset-x-12"
+      />
       <div
         ref={scrollRef}
         onClick={() => {
           autoScroll.toggle();
           bumpControls();
         }}
-        className="h-full overflow-y-auto px-4 pt-20 sm:px-12"
+        className="h-full overflow-y-auto px-4 sm:px-12"
       >
+        <div style={{ height: `${READING_ZONE_VH}vh` }} aria-hidden="true" />
         <ChordSheet song={parsed} fontSizePx={fontSize} />
-        {/* Trailing space so the last line can scroll clear of the bottom bar instead of stopping flush against it. */}
-        <div style={{ height: '28vh' }} aria-hidden="true" />
+        {/* Matches the top spacer so the last line scrolls through the reading line too,
+            instead of stopping short against the bottom bar. */}
+        <div style={{ height: `${READING_ZONE_VH}vh` }} aria-hidden="true" />
       </div>
 
       {prevSongId && (

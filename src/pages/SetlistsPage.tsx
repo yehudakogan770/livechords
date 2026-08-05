@@ -25,10 +25,12 @@ export default function SetlistsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6">
-      <h1 className="mb-4 text-xl font-semibold">Setlists</h1>
+    <div className="mx-auto max-w-6xl px-4 py-6">
+      <h1 className="mb-4 text-xl font-semibold">
+        Setlists <span className="text-stage-muted text-base font-normal">({setlists.length})</span>
+      </h1>
 
-      <form onSubmit={handleCreate} className="mb-4 flex gap-2">
+      <form onSubmit={handleCreate} className="mb-6 flex gap-2 sm:max-w-md">
         <input
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
@@ -44,13 +46,13 @@ export default function SetlistsPage() {
       </form>
 
       {setlists.length === 0 ? (
-        <p className="text-stage-muted rounded-lg border border-dashed border-stage-edge px-4 py-10 text-center text-sm">
+        <p className="text-stage-muted rounded-lg border border-dashed border-stage-edge px-4 py-16 text-center text-sm">
           No setlists yet. Group songs into a setlist to flow hands-free from one to the next on stage.
         </p>
       ) : (
-        <ul className="flex flex-col gap-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {setlists.map((setlist) => (
-            <li
+            <div
               key={setlist.id}
               className="border-stage-edge bg-stage-panel flex items-center gap-2 rounded-lg border px-3 py-2"
             >
@@ -72,9 +74,9 @@ export default function SetlistsPage() {
               >
                 <IconTrash className="h-4 w-4" />
               </button>
-            </li>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );

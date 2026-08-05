@@ -59,7 +59,7 @@ export default function SetlistEditorPage() {
   const availableToAdd = allSongs.filter((s) => !setlist.songIds.includes(s.id));
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6">
+    <div className="mx-auto max-w-3xl px-4 py-6">
       <div className="mb-4 flex items-center justify-between gap-3">
         <input
           value={setlist.name}

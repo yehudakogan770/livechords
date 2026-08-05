@@ -23,3 +23,12 @@ body {
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior: none;
 }
+
+/* The dark stage theme is deliberately unprintable as-is: white-on-dark
+   would either vanish on paper or burn through a printer's ink budget. */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+}

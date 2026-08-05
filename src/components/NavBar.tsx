@@ -7,8 +7,8 @@ const linkInactive = 'text-stage-muted hover:text-stage-text';
 
 export function NavBar() {
   return (
-    <header className="border-stage-edge bg-stage-panel/80 sticky top-0 z-20 border-b backdrop-blur">
-      <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
+    <header className="border-stage-edge bg-stage-panel/80 sticky top-0 z-20 border-b backdrop-blur print:hidden">
+      <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3">
         <NavLink to="/" end className="text-stage-text mr-1 flex items-center gap-1.5 text-base font-bold">
           <IconMic className="text-stage-accent h-5 w-5" />
           LiveChords

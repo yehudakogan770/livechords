@@ -23,7 +23,7 @@ export function ChordSheet({ song, fontSizePx }: ChordSheetProps) {
           return (
             <div
               key={i}
-              className="text-stage-accent mt-[0.7em] mb-[0.15em] font-semibold tracking-wide uppercase"
+              className="text-stage-accent mt-[0.7em] mb-[0.15em] font-semibold tracking-wide uppercase print:text-black"
               style={{ fontSize: '0.5em' }}
             >
               {line.label || '—'}
@@ -32,16 +32,16 @@ export function ChordSheet({ song, fontSizePx }: ChordSheetProps) {
         }
 
         return (
-          <div key={i} className="mb-[0.2em] flex flex-wrap items-start">
+          <div key={i} className="mb-[0.2em] flex flex-wrap items-start break-inside-avoid">
             {line.tokens.map((token, j) => (
               <span key={j} className="inline-flex flex-col">
                 <span
-                  className="text-stage-chord font-bold whitespace-pre"
+                  className="text-stage-chord print:text-black font-bold whitespace-pre"
                   style={{ fontSize: '0.6em', lineHeight: 1.15, minHeight: '1.15em' }}
                 >
                   {token.chord ?? ''}
                 </span>
-                <span className="text-stage-text whitespace-pre">{token.text}</span>
+                <span className="text-stage-text whitespace-pre print:text-black">{token.text}</span>
               </span>
             ))}
           </div>

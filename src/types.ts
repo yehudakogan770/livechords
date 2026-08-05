@@ -2,6 +2,8 @@ export interface Song {
   id: string;
   title: string;
   artist: string;
+  /** Genre/category, e.g. "Worship", "Hymn", "Rock". Empty if unset. Drives Library grouping. */
+  style: string;
   /** Original key the chart was written in, e.g. "G", "Bb", "F#m". Empty if unknown. */
   originalKey: string;
   /** Beats per minute. 0/undefined means "not set" — auto-scroll falls back to a manual speed. */
@@ -54,6 +56,8 @@ export type PedalKeyMap = Record<string, PedalAction>;
 
 export type AccidentalPreference = 'sharp' | 'flat' | 'auto';
 
+export type LibraryGrouping = 'title' | 'artist' | 'style';
+
 export interface AppSettings {
   pedalKeyMap: PedalKeyMap;
   defaultFontSizePx: number;
@@ -61,4 +65,21 @@ export interface AppSettings {
   accidentalPreference: AccidentalPreference;
   keepScreenAwake: boolean;
   autoAdvanceToNextInSetlist: boolean;
+  libraryGrouping: LibraryGrouping;
 }
+
+/** Common genres for the Style suggestion list; the editor also suggests whatever styles are already in use. */
+export const STYLE_PRESETS: string[] = [
+  'Worship',
+  'Hymn',
+  'Gospel',
+  'Rock',
+  'Pop',
+  'Country',
+  'Folk',
+  'Blues',
+  'Jazz',
+  'R&B',
+  'Christmas',
+  'Original',
+];
