@@ -1,5 +1,8 @@
 # LiveChords
 
+**Live app: https://yehudakogan770.github.io/livechords/** — open it on a
+phone or tablet and use the browser menu to "Add to Home Screen" to install it.
+
 A hands-free chord/lyrics display for gigging musicians. Prop up a tablet or
 phone, and the chart scrolls itself in sync with the tempo, advances on a
 foot-pedal press, and transposes on the fly — no hands needed mid-song.
