@@ -25,6 +25,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   keepScreenAwake: true,
   autoAdvanceToNextInSetlist: true,
   libraryGrouping: 'title',
+  theme: 'dark',
 };
 
 function readJson<T>(key: string, fallback: T): T {
@@ -60,10 +61,10 @@ function ensureSeeded(): void {
 
 export function getSongs(): Song[] {
   ensureSeeded();
-  // `style` was added after songs could already exist in a browser's localStorage,
-  // so backfill it defensively rather than assuming every stored Song has it.
+  // Several fields were added after songs could already exist in a browser's
+  // localStorage, so backfill them defensively rather than assuming every stored Song has them.
   return readJson<Song[]>(KEYS.songs, [])
-    .map((s) => ({ ...s, style: s.style ?? '' }))
+    .map((s) => ({ ...s, style: s.style ?? '', capo: s.capo ?? 0, favorite: s.favorite ?? false }))
     .sort((a, b) => a.title.localeCompare(b.title));
 }
 
@@ -84,10 +85,12 @@ export function createSong(input: NewSong): Song {
     style: input.style,
     originalKey: input.originalKey,
     bpm: input.bpm,
+    capo: input.capo,
     content: input.content,
     tags: input.tags,
     transpose: input.transpose ?? 0,
     scrollSpeed,
+    favorite: input.favorite ?? false,
     createdAt: now,
     updatedAt: now,
   };
@@ -120,7 +123,9 @@ export function deleteSong(id: string): void {
 }
 
 export function getSetlists(): Setlist[] {
-  return readJson<Setlist[]>(KEYS.setlists, []).sort((a, b) => a.name.localeCompare(b.name));
+  return readJson<Setlist[]>(KEYS.setlists, [])
+    .map((s) => ({ ...s, notes: s.notes ?? {} }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export function getSetlist(id: string): Setlist | undefined {
@@ -129,7 +134,7 @@ export function getSetlist(id: string): Setlist | undefined {
 
 export function createSetlist(name: string): Setlist {
   const now = Date.now();
-  const setlist: Setlist = { id: newId(), name, songIds: [], createdAt: now, updatedAt: now };
+  const setlist: Setlist = { id: newId(), name, songIds: [], notes: {}, createdAt: now, updatedAt: now };
   const setlists = readJson<Setlist[]>(KEYS.setlists, []);
   setlists.push(setlist);
   writeJson(KEYS.setlists, setlists);

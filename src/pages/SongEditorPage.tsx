@@ -2,7 +2,8 @@ import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { ChordSheet } from '../components/ChordSheet';
 import { inputClass, labelClass } from '../components/formStyles';
-import { IconCamera, IconPrinter, IconTrash } from '../components/icons';
+import { useConfirm } from '../components/ConfirmDialog';
+import { IconCamera, IconCopy, IconPrinter, IconTrash } from '../components/icons';
 import { createSong, deleteSong, getSong, getSongs, saveSong } from '../data/storage';
 import { parseSong } from '../lib/chordpro';
 import type { OcrProgress } from '../lib/ocr';
@@ -17,6 +18,7 @@ const STARTER_CONTENT = `{c: Verse 1}
 export default function SongEditorPage() {
   const { songId } = useParams<{ songId: string }>();
   const navigate = useNavigate();
+  const confirm = useConfirm();
   const existing = useMemo(() => (songId ? getSong(songId) : undefined), [songId]);
 
   const [title, setTitle] = useState('');
@@ -24,6 +26,7 @@ export default function SongEditorPage() {
   const [style, setStyle] = useState('');
   const [originalKey, setOriginalKey] = useState('');
   const [bpm, setBpm] = useState('');
+  const [capo, setCapo] = useState('');
   const [tags, setTags] = useState('');
   const [content, setContent] = useState(STARTER_CONTENT);
   const [error, setError] = useState<string | null>(null);
@@ -44,6 +47,7 @@ export default function SongEditorPage() {
     setStyle(existing?.style ?? '');
     setOriginalKey(existing?.originalKey ?? '');
     setBpm(existing?.bpm ? String(existing.bpm) : '');
+    setCapo(existing?.capo ? String(existing.capo) : '');
     setTags(existing?.tags.join(', ') ?? '');
     setContent(existing?.content ?? STARTER_CONTENT);
     setError(null);
@@ -91,6 +95,7 @@ export default function SongEditorPage() {
       style: style.trim(),
       originalKey: originalKey.trim(),
       bpm: Number.parseInt(bpm, 10) || 0,
+      capo: Number.parseInt(capo, 10) || 0,
       content,
       tags: tags
         .split(',')
@@ -110,11 +115,18 @@ export default function SongEditorPage() {
     navigate(andPerform ? `/stage/${song.id}` : '/');
   }
 
-  function handleDelete() {
+  async function handleDelete() {
     if (!existing) return;
-    if (!window.confirm(`Delete "${existing.title}"? This can't be undone.`)) return;
+    const ok = await confirm(`Delete "${existing.title}"? This can't be undone.`, { danger: true, confirmLabel: 'Delete' });
+    if (!ok) return;
     deleteSong(existing.id);
     navigate('/');
+  }
+
+  function handleDuplicate() {
+    if (!existing) return;
+    const copy = createSong({ ...buildInput(), title: `${existing.title} (copy)` });
+    navigate(`/song/${copy.id}/edit`);
   }
 
   return (
@@ -122,14 +134,24 @@ export default function SongEditorPage() {
       <div className="mb-4 flex items-center justify-between gap-3 print:hidden">
         <h1 className="text-xl font-semibold">{existing ? 'Edit Song' : 'New Song'}</h1>
         {existing && (
-          <button
-            type="button"
-            onClick={handleDelete}
-            className="text-stage-muted flex items-center gap-1 rounded-full px-3 py-1.5 text-sm hover:text-red-400"
-          >
-            <IconTrash className="h-4 w-4" />
-            Delete
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={handleDuplicate}
+              className="text-stage-muted flex items-center gap-1 rounded-full px-3 py-1.5 text-sm hover:text-stage-text"
+            >
+              <IconCopy className="h-4 w-4" />
+              Duplicate
+            </button>
+            <button
+              type="button"
+              onClick={handleDelete}
+              className="text-stage-muted flex items-center gap-1 rounded-full px-3 py-1.5 text-sm hover:text-red-400"
+            >
+              <IconTrash className="h-4 w-4" />
+              Delete
+            </button>
+          </div>
         )}
       </div>
 
@@ -179,7 +201,7 @@ export default function SongEditorPage() {
               ))}
             </datalist>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div>
               <label className={labelClass} htmlFor="song-key">
                 Key
@@ -205,6 +227,22 @@ export default function SongEditorPage() {
                 value={bpm}
                 onChange={(e) => setBpm(e.target.value)}
                 placeholder="70"
+              />
+            </div>
+            <div>
+              <label className={labelClass} htmlFor="song-capo">
+                Capo
+              </label>
+              <input
+                id="song-capo"
+                type="number"
+                inputMode="numeric"
+                min={0}
+                max={11}
+                className={inputClass}
+                value={capo}
+                onChange={(e) => setCapo(e.target.value)}
+                placeholder="0"
               />
             </div>
           </div>

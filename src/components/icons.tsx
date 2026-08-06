@@ -139,3 +139,84 @@ export function IconPrinter(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function IconGripVertical(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Svg {...props} fill="currentColor" stroke="none">
+      <circle cx="9" cy="6" r="1.5" />
+      <circle cx="15" cy="6" r="1.5" />
+      <circle cx="9" cy="12" r="1.5" />
+      <circle cx="15" cy="12" r="1.5" />
+      <circle cx="9" cy="18" r="1.5" />
+      <circle cx="15" cy="18" r="1.5" />
+    </Svg>
+  );
+}
+
+export function IconStar(props: SVGProps<SVGSVGElement> & { filled?: boolean }) {
+  const { filled, ...rest } = props;
+  return (
+    <Svg {...rest} fill={filled ? 'currentColor' : 'none'}>
+      <path d="M12 2.5l2.9 6.6 7.1.7-5.4 4.8 1.6 7-6.2-3.7-6.2 3.7 1.6-7-5.4-4.8 7.1-.7z" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+export function IconSearch(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Svg {...props}>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m21 21-4.3-4.3" />
+    </Svg>
+  );
+}
+
+export function IconX(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Svg {...props}>
+      <path d="M18 6 6 18M6 6l12 12" />
+    </Svg>
+  );
+}
+
+export function IconMetronome(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Svg {...props}>
+      <path d="M8 21h8" />
+      <path d="M9.5 3h5l4 18h-13z" />
+      <path d="M12 7v9" />
+      <path d="M9 10l6-3" />
+    </Svg>
+  );
+}
+
+export function IconGuitar(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Svg {...props}>
+      <circle cx="8" cy="16" r="5" />
+      <path d="M11 12.5 17 6" />
+      <path d="M15 4l5 5" />
+      <path d="M16.5 4.5l3 3" />
+      <path d="M13 7.5l1.8 1.8" />
+    </Svg>
+  );
+}
+
+export function IconCopy(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Svg {...props}>
+      <rect x="9" y="9" width="12" height="12" rx="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </Svg>
+  );
+}
+
+export function IconDownload(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Svg {...props}>
+      <path d="M12 3v12" />
+      <path d="m7 10 5 5 5-5" />
+      <path d="M5 21h14" />
+    </Svg>
+  );
+}
+

@@ -189,6 +189,10 @@ export default function StagePage() {
   const displayKey = song.originalKey
     ? transposeChord(song.originalKey, transpose, settings.accidentalPreference)
     : null;
+  const capoLabel = song.capo
+    ? `Capo ${song.capo}${displayKey ? ` · sounds ${transposeChord(displayKey, song.capo, settings.accidentalPreference)}` : ''}`
+    : null;
+  const setlistNote = setlist?.notes[song.id] || null;
 
   return (
     <div className="bg-stage-bg text-stage-text relative h-dvh overflow-hidden">
@@ -243,6 +247,8 @@ export default function StagePage() {
         transposeOffset={transpose}
         setlistPosition={setlist && setlistIndex >= 0 ? { index: setlistIndex, total: setlist.songIds.length, name: setlist.name } : null}
         wakeLockActive={wakeLockActive}
+        capoLabel={capoLabel}
+        setlistNote={setlistNote}
         onBack={() => navigate(-1)}
         onSettings={() => navigate('/settings')}
       />

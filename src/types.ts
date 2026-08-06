@@ -8,6 +8,8 @@ export interface Song {
   originalKey: string;
   /** Beats per minute. 0/undefined means "not set" — auto-scroll falls back to a manual speed. */
   bpm: number;
+  /** Capo fret the chart's chord shapes assume. 0 means no capo / not set. Purely informational. */
+  capo: number;
   /** ChordPro-lite source text: inline [Chord] tokens, {directive: value} lines, blank-line spacing. */
   content: string;
   tags: string[];
@@ -15,17 +17,20 @@ export interface Song {
   transpose: number;
   /** Auto-scroll speed for this song, in pixels/second. Persisted once the performer dials it in. */
   scrollSpeed: number;
+  favorite: boolean;
   createdAt: number;
   updatedAt: number;
 }
 
-export type NewSong = Omit<Song, 'id' | 'createdAt' | 'updatedAt' | 'transpose' | 'scrollSpeed'> &
-  Partial<Pick<Song, 'transpose' | 'scrollSpeed'>>;
+export type NewSong = Omit<Song, 'id' | 'createdAt' | 'updatedAt' | 'transpose' | 'scrollSpeed' | 'favorite'> &
+  Partial<Pick<Song, 'transpose' | 'scrollSpeed' | 'favorite'>>;
 
 export interface Setlist {
   id: string;
   name: string;
   songIds: string[];
+  /** Free-text performance notes per song, keyed by song id (e.g. "capo 2", "key change for vocalist"). */
+  notes: Record<string, string>;
   createdAt: number;
   updatedAt: number;
 }
@@ -58,6 +63,8 @@ export type AccidentalPreference = 'sharp' | 'flat' | 'auto';
 
 export type LibraryGrouping = 'title' | 'artist' | 'style';
 
+export type Theme = 'dark' | 'light' | 'system';
+
 export interface AppSettings {
   pedalKeyMap: PedalKeyMap;
   defaultFontSizePx: number;
@@ -66,6 +73,7 @@ export interface AppSettings {
   keepScreenAwake: boolean;
   autoAdvanceToNextInSetlist: boolean;
   libraryGrouping: LibraryGrouping;
+  theme: Theme;
 }
 
 /** Common genres for the Style suggestion list; the editor also suggests whatever styles are already in use. */

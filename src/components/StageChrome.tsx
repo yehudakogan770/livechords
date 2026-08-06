@@ -24,6 +24,8 @@ interface StageTopBarProps {
   transposeOffset: number;
   setlistPosition: SetlistPosition | null;
   wakeLockActive: boolean;
+  capoLabel: string | null;
+  setlistNote: string | null;
   onBack: () => void;
   onSettings: () => void;
 }
@@ -36,6 +38,8 @@ export function StageTopBar({
   transposeOffset,
   setlistPosition,
   wakeLockActive,
+  capoLabel,
+  setlistNote,
   onBack,
   onSettings,
 }: StageTopBarProps) {
@@ -60,7 +64,9 @@ export function StageTopBar({
         <p className="text-stage-muted truncate text-sm leading-tight">
           {artist || 'Unknown artist'}
           {setlistPosition ? ` · ${setlistPosition.name} ${setlistPosition.index + 1}/${setlistPosition.total}` : ''}
+          {capoLabel ? ` · ${capoLabel}` : ''}
         </p>
+        {setlistNote && <p className="text-stage-chord truncate text-sm leading-tight font-medium">{setlistNote}</p>}
       </div>
 
       {displayKey && (
