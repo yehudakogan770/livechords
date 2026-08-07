@@ -23,6 +23,18 @@ export default function SettingsPage() {
   const [listeningFor, setListeningFor] = useState<PedalAction | null>(null);
   const [importMessage, setImportMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [detecting, setDetecting] = useState(false);
+  const [detectedKeys, setDetectedKeys] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!detecting) return;
+    function handleKeyDown(e: KeyboardEvent) {
+      e.preventDefault();
+      setDetectedKeys((prev) => [e.key, ...prev].slice(0, 5));
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [detecting]);
 
   function update(patch: Partial<AppSettings> | ((prev: AppSettings) => Partial<AppSettings>)) {
     setSettings((prev) => {
@@ -126,6 +138,42 @@ export default function SettingsPage() {
             Most Bluetooth/USB page-turner pedals act like a keyboard. Plug in or pair your pedal, click "Add key" next
             to an action, then press the pedal.
           </p>
+
+          <div className="border-stage-edge bg-stage-bg mb-4 rounded-lg border p-3">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-medium">Not sure what your pedal sends?</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setDetecting((v) => !v);
+                  setDetectedKeys([]);
+                }}
+                className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+                  detecting ? 'border-stage-accent text-stage-accent animate-pulse' : 'border-stage-edge text-stage-muted'
+                }`}
+              >
+                {detecting ? 'Stop testing' : 'Test your pedal'}
+              </button>
+            </div>
+            {detecting && (
+              <p className="text-stage-muted mt-2 text-sm">
+                Press any pedal button or key —{' '}
+                {detectedKeys.length === 0 ? (
+                  'waiting…'
+                ) : (
+                  <>
+                    last:{' '}
+                    {detectedKeys.map((k, i) => (
+                      <span key={i} className="border-stage-edge bg-stage-panel ml-1 rounded-full border px-2 py-0.5 text-xs">
+                        {formatKeyName(k)}
+                      </span>
+                    ))}
+                  </>
+                )}
+              </p>
+            )}
+          </div>
+
           <ul className="flex flex-col gap-2">
             {PEDAL_ACTIONS.map(({ action, label }) => {
               const keys = Object.entries(settings.pedalKeyMap)

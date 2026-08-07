@@ -1,12 +1,15 @@
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
+import { ChordDiagram } from '../components/ChordDiagram';
 import { ChordSheet } from '../components/ChordSheet';
-import { inputClass, labelClass } from '../components/formStyles';
 import { useConfirm } from '../components/ConfirmDialog';
+import { inputClass, labelClass } from '../components/formStyles';
 import { IconCamera, IconCopy, IconPrinter, IconTrash } from '../components/icons';
 import { createSong, deleteSong, getSong, getSongs, saveSong } from '../data/storage';
-import { parseSong } from '../lib/chordpro';
+import { extractChords, parseSong } from '../lib/chordpro';
+import { getChordShape } from '../lib/chordShapes';
 import type { OcrProgress } from '../lib/ocr';
+import { createTapTempo } from '../lib/tapTempo';
 import { STYLE_PRESETS, type NewSong, type Song } from '../types';
 
 const STARTER_CONTENT = `{c: Verse 1}
@@ -33,6 +36,12 @@ export default function SongEditorPage() {
   const [scanProgress, setScanProgress] = useState<OcrProgress | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const tapTempoRef = useRef(createTapTempo());
+
+  function handleTapTempo() {
+    const estimate = tapTempoRef.current.tap();
+    if (estimate) setBpm(String(estimate));
+  }
 
   const styleSuggestions = useMemo(() => {
     const used = getSongs()
@@ -54,6 +63,14 @@ export default function SongEditorPage() {
   }, [existing]);
 
   const parsedPreview = useMemo(() => parseSong(content), [content]);
+
+  const chordDiagrams = useMemo(
+    () =>
+      extractChords(content)
+        .map((chord) => ({ chord, shape: getChordShape(chord) }))
+        .filter((entry): entry is { chord: string; shape: NonNullable<ReturnType<typeof getChordShape>> } => entry.shape !== null),
+    [content],
+  );
 
   function fillFromContent() {
     const { meta } = parseSong(content);
@@ -215,9 +232,14 @@ export default function SongEditorPage() {
               />
             </div>
             <div>
-              <label className={labelClass} htmlFor="song-bpm">
-                BPM
-              </label>
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <label className={labelClass + ' mb-0'} htmlFor="song-bpm">
+                  BPM
+                </label>
+                <button type="button" onClick={handleTapTempo} className="text-stage-accent text-xs font-medium">
+                  Tap
+                </button>
+              </div>
               <input
                 id="song-bpm"
                 type="number"
@@ -388,6 +410,17 @@ export default function SongEditorPage() {
           <div className="hidden print:block">
             <ChordSheet song={parsedPreview} fontSizePx={26} />
           </div>
+
+          {chordDiagrams.length > 0 && (
+            <div className="border-stage-edge mt-4 border-t pt-3 print:hidden">
+              <p className={labelClass}>Chord diagrams</p>
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {chordDiagrams.map(({ chord, shape }) => (
+                  <ChordDiagram key={chord} shape={shape} label={chord} />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

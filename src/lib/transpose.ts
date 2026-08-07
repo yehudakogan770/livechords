@@ -3,7 +3,7 @@ import type { AccidentalPreference } from '../types';
 const SHARP_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 const FLAT_NAMES = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
 
-const NOTE_TO_SEMITONE: Record<string, number> = {
+export const NOTE_TO_SEMITONE: Record<string, number> = {
   C: 0,
   'B#': 0,
   'C#': 1,
@@ -28,9 +28,9 @@ const NOTE_TO_SEMITONE: Record<string, number> = {
 };
 
 // A note token: root letter + optional accidental, e.g. "G", "F#", "Bb".
-const NOTE_RE = /^([A-Ga-g])([#b♯♭]?)/;
+export const NOTE_RE = /^([A-Ga-g])([#b♯♭]?)/;
 
-function normalizeAccidental(raw: string): '' | '#' | 'b' {
+export function normalizeAccidental(raw: string): '' | '#' | 'b' {
   if (raw === '#' || raw === '♯') return '#';
   if (raw === 'b' || raw === '♭') return 'b';
   return '';
@@ -83,7 +83,7 @@ export function transposeChord(chord: string, semitones: number, pref: Accidenta
   return `${newRoot}${quality}/${newBass ?? bass}`;
 }
 
-const CHORD_TOKEN_RE = /\[([^\]\n]+)\]/g;
+export const CHORD_TOKEN_RE = /\[([^\]\n]+)\]/g;
 
 /** Transposes every inline [Chord] token in ChordPro-lite source text, leaving lyrics untouched. */
 export function transposeContent(content: string, semitones: number, pref: AccidentalPreference = 'auto'): string {
