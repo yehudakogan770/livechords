@@ -1,5 +1,9 @@
 import { Navigate, Outlet, Route, Routes } from 'react-router';
+import { ConfirmProvider } from './components/ConfirmDialog';
+import { InstallBanner } from './components/InstallBanner';
 import { NavBar } from './components/NavBar';
+import { ToastProvider } from './components/Toast';
+import { ThemeProvider } from './lib/ThemeContext';
 import LibraryPage from './pages/LibraryPage';
 import SetlistEditorPage from './pages/SetlistEditorPage';
 import SetlistsPage from './pages/SetlistsPage';
@@ -11,6 +15,7 @@ function AppLayout() {
   return (
     <div className="bg-stage-bg text-stage-text min-h-dvh print:bg-white print:text-black">
       <NavBar />
+      <InstallBanner />
       <main>
         <Outlet />
       </main>
@@ -20,20 +25,26 @@ function AppLayout() {
 
 function App() {
   return (
-    <Routes>
-      {/* Stage View owns the full screen with its own chrome — no library nav bar. */}
-      <Route path="/stage/:songId" element={<StagePage />} />
+    <ThemeProvider>
+      <ToastProvider>
+        <ConfirmProvider>
+          <Routes>
+            {/* Stage View owns the full screen with its own chrome — no library nav bar. */}
+            <Route path="/stage/:songId" element={<StagePage />} />
 
-      <Route element={<AppLayout />}>
-        <Route path="/" element={<LibraryPage />} />
-        <Route path="/song/new" element={<SongEditorPage />} />
-        <Route path="/song/:songId/edit" element={<SongEditorPage />} />
-        <Route path="/setlists" element={<SetlistsPage />} />
-        <Route path="/setlists/:setlistId" element={<SetlistEditorPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Route>
-    </Routes>
+            <Route element={<AppLayout />}>
+              <Route path="/" element={<LibraryPage />} />
+              <Route path="/song/new" element={<SongEditorPage />} />
+              <Route path="/song/:songId/edit" element={<SongEditorPage />} />
+              <Route path="/setlists" element={<SetlistsPage />} />
+              <Route path="/setlists/:setlistId" element={<SetlistEditorPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Route>
+          </Routes>
+        </ConfirmProvider>
+      </ToastProvider>
+    </ThemeProvider>
   );
 }
 

@@ -4,9 +4,11 @@ import { ChordSheet } from '../components/ChordSheet';
 import { StageBottomBar, StageTopBar } from '../components/StageChrome';
 import { getSetlist, getSettings, getSong, saveSong } from '../data/storage';
 import { parseSong } from '../lib/chordpro';
+import { toNashvilleContent } from '../lib/nashville';
 import { estimateScrollSpeed, MAX_SCROLL_SPEED, MIN_SCROLL_SPEED, SCROLL_SPEED_STEP } from '../lib/scrollSpeed';
 import { formatTransposeOffset, transposeChord, transposeContent } from '../lib/transpose';
 import { useAutoScroll } from '../lib/useAutoScroll';
+import { useMetronome } from '../lib/useMetronome';
 import { usePedalInput } from '../lib/usePedalInput';
 import { useWakeLock } from '../lib/useWakeLock';
 import type { PedalAction, Song } from '../types';
@@ -38,6 +40,7 @@ export default function StagePage() {
   const [scrollSpeed, setScrollSpeed] = useState(song?.scrollSpeed ?? settings.defaultScrollSpeed);
   const [fontSize, setFontSize] = useState(settings.defaultFontSizePx);
   const [controlsVisible, setControlsVisible] = useState(true);
+  const [nashville, setNashville] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -60,8 +63,12 @@ export default function StagePage() {
   const parsed = useMemo(() => {
     if (!song) return null;
     const transposed = transposeContent(song.content, transpose, settings.accidentalPreference);
+    if (nashville && song.originalKey) {
+      const currentKey = transposeChord(song.originalKey, transpose, settings.accidentalPreference);
+      return parseSong(toNashvilleContent(transposed, currentKey));
+    }
     return parseSong(transposed);
-  }, [song, transpose, settings.accidentalPreference]);
+  }, [song, transpose, settings.accidentalPreference, nashville]);
 
   const goToSong = useCallback(
     (id: string, autoplay: boolean) => {
@@ -79,6 +86,7 @@ export default function StagePage() {
 
   const autoScroll = useAutoScroll(scrollRef, scrollSpeed, handleReachEnd);
   const { setPlaying } = autoScroll;
+  const metronome = useMetronome(song?.bpm ?? 0);
 
   // Auto-start scrolling when we arrived here via hands-free setlist auto-advance.
   useEffect(() => {
@@ -86,6 +94,12 @@ export default function StagePage() {
       setPlaying(true);
     }
   }, [songId, location.state, setPlaying]);
+
+  // The click track is a rehearsal aid, not something that should keep playing
+  // through the device speaker once auto-scroll (i.e. the actual performance) starts.
+  useEffect(() => {
+    if (autoScroll.playing) metronome.stop();
+  }, [autoScroll.playing, metronome.stop]);
 
   const bumpControls = useCallback(() => {
     setControlsVisible(true);
@@ -189,6 +203,10 @@ export default function StagePage() {
   const displayKey = song.originalKey
     ? transposeChord(song.originalKey, transpose, settings.accidentalPreference)
     : null;
+  const capoLabel = song.capo
+    ? `Capo ${song.capo}${displayKey ? ` · sounds ${transposeChord(displayKey, song.capo, settings.accidentalPreference)}` : ''}`
+    : null;
+  const setlistNote = setlist?.notes[song.id] || null;
 
   return (
     <div className="bg-stage-bg text-stage-text relative h-dvh overflow-hidden">
@@ -243,6 +261,8 @@ export default function StagePage() {
         transposeOffset={transpose}
         setlistPosition={setlist && setlistIndex >= 0 ? { index: setlistIndex, total: setlist.songIds.length, name: setlist.name } : null}
         wakeLockActive={wakeLockActive}
+        capoLabel={capoLabel}
+        setlistNote={setlistNote}
         onBack={() => navigate(-1)}
         onSettings={() => navigate('/settings')}
       />
@@ -254,6 +274,18 @@ export default function StagePage() {
         scrollSpeed={scrollSpeed}
         fontSizePx={fontSize}
         canSyncTempo={Boolean(song.bpm)}
+        canNashville={Boolean(song.originalKey)}
+        nashvilleActive={nashville}
+        onToggleNashville={() => {
+          setNashville((v) => !v);
+          bumpControls();
+        }}
+        canMetronome={Boolean(song.bpm)}
+        metronomeActive={metronome.playing}
+        onToggleMetronome={() => {
+          metronome.toggle();
+          bumpControls();
+        }}
         onTogglePlay={() => {
           autoScroll.toggle();
           bumpControls();

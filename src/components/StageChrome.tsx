@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import {
   IconChevronLeft,
   IconLock,
+  IconMetronome,
   IconMinus,
   IconPause,
   IconPlay,
@@ -24,6 +25,8 @@ interface StageTopBarProps {
   transposeOffset: number;
   setlistPosition: SetlistPosition | null;
   wakeLockActive: boolean;
+  capoLabel: string | null;
+  setlistNote: string | null;
   onBack: () => void;
   onSettings: () => void;
 }
@@ -36,6 +39,8 @@ export function StageTopBar({
   transposeOffset,
   setlistPosition,
   wakeLockActive,
+  capoLabel,
+  setlistNote,
   onBack,
   onSettings,
 }: StageTopBarProps) {
@@ -60,7 +65,9 @@ export function StageTopBar({
         <p className="text-stage-muted truncate text-sm leading-tight">
           {artist || 'Unknown artist'}
           {setlistPosition ? ` · ${setlistPosition.name} ${setlistPosition.index + 1}/${setlistPosition.total}` : ''}
+          {capoLabel ? ` · ${capoLabel}` : ''}
         </p>
+        {setlistNote && <p className="text-stage-chord truncate text-sm leading-tight font-medium">{setlistNote}</p>}
       </div>
 
       {displayKey && (
@@ -100,6 +107,10 @@ interface StageBottomBarProps {
   scrollSpeed: number;
   fontSizePx: number;
   canSyncTempo: boolean;
+  canNashville: boolean;
+  nashvilleActive: boolean;
+  canMetronome: boolean;
+  metronomeActive: boolean;
   onTogglePlay: () => void;
   onRestart: () => void;
   onFontDown: () => void;
@@ -109,6 +120,8 @@ interface StageBottomBarProps {
   onSpeedDown: () => void;
   onSpeedUp: () => void;
   onSyncTempo: () => void;
+  onToggleNashville: () => void;
+  onToggleMetronome: () => void;
 }
 
 function ControlGroup({ children, label }: { children: ReactNode; label: string }) {
@@ -152,6 +165,10 @@ export function StageBottomBar({
   scrollSpeed,
   fontSizePx,
   canSyncTempo,
+  canNashville,
+  nashvilleActive,
+  canMetronome,
+  metronomeActive,
   onTogglePlay,
   onRestart,
   onFontDown,
@@ -161,6 +178,8 @@ export function StageBottomBar({
   onSpeedDown,
   onSpeedUp,
   onSyncTempo,
+  onToggleNashville,
+  onToggleMetronome,
 }: StageBottomBarProps) {
   return (
     <div
@@ -186,6 +205,22 @@ export function StageBottomBar({
           <IconPlus className="h-5 w-5" />
         </RoundButton>
       </ControlGroup>
+
+      {canNashville && (
+        <ControlGroup label="Numbers">
+          <button
+            type="button"
+            aria-label="Toggle Nashville Number System chord display"
+            aria-pressed={nashvilleActive}
+            onClick={onToggleNashville}
+            className={`flex h-11 shrink-0 items-center justify-center rounded-full px-3 text-sm font-bold transition-colors active:scale-95 ${
+              nashvilleActive ? 'bg-stage-accent text-stage-bg' : 'text-stage-text active:bg-white/10'
+            }`}
+          >
+            1‑4‑5
+          </button>
+        </ControlGroup>
+      )}
 
       <ControlGroup label={`Scroll ${scrollSpeed}px/s`}>
         <RoundButton label="Scroll slower" onClick={onSpeedDown}>
@@ -213,6 +248,14 @@ export function StageBottomBar({
           </button>
         )}
       </ControlGroup>
+
+      {canMetronome && (
+        <ControlGroup label="Click">
+          <RoundButton label={metronomeActive ? 'Stop metronome' : 'Start metronome'} onClick={onToggleMetronome} emphasize={metronomeActive}>
+            <IconMetronome className="h-5 w-5" />
+          </RoundButton>
+        </ControlGroup>
+      )}
     </div>
   );
 }

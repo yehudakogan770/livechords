@@ -1,18 +1,40 @@
 import { type ChangeEvent, useEffect, useRef, useState } from 'react';
+import { useConfirm } from '../components/ConfirmDialog';
 import { inputClass, labelClass, sectionClass } from '../components/formStyles';
 import { DEFAULT_SETTINGS, exportBackup, getSettings, importBackup, saveSettings, type BackupBundle } from '../data/storage';
+import { useTheme } from '../lib/ThemeContext';
 import { PEDAL_ACTIONS } from '../types';
-import type { AccidentalPreference, AppSettings, PedalAction } from '../types';
+import type { AccidentalPreference, AppSettings, PedalAction, Theme } from '../types';
+
+const THEME_OPTIONS: { value: Theme; label: string }[] = [
+  { value: 'dark', label: 'Dark' },
+  { value: 'light', label: 'Light' },
+  { value: 'system', label: 'System' },
+];
 
 function formatKeyName(key: string): string {
   return key === ' ' ? 'Space' : key;
 }
 
 export default function SettingsPage() {
+  const { theme, setTheme } = useTheme();
+  const confirm = useConfirm();
   const [settings, setSettings] = useState<AppSettings>(getSettings);
   const [listeningFor, setListeningFor] = useState<PedalAction | null>(null);
   const [importMessage, setImportMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [detecting, setDetecting] = useState(false);
+  const [detectedKeys, setDetectedKeys] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!detecting) return;
+    function handleKeyDown(e: KeyboardEvent) {
+      e.preventDefault();
+      setDetectedKeys((prev) => [e.key, ...prev].slice(0, 5));
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [detecting]);
 
   function update(patch: Partial<AppSettings> | ((prev: AppSettings) => Partial<AppSettings>)) {
     setSettings((prev) => {
@@ -43,8 +65,9 @@ export default function SettingsPage() {
     });
   }
 
-  function resetBindings() {
-    if (!window.confirm('Reset pedal key bindings to the defaults?')) return;
+  async function resetBindings() {
+    const ok = await confirm('Reset pedal key bindings to the defaults?', { confirmLabel: 'Reset' });
+    if (!ok) return;
     update({ pedalKeyMap: { ...DEFAULT_SETTINGS.pedalKeyMap } });
   }
 
@@ -62,7 +85,11 @@ export default function SettingsPage() {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    if (!window.confirm('Import this backup? It will replace all current songs, setlists, and settings.')) return;
+    const ok = await confirm('Import this backup? It will replace all current songs, setlists, and settings.', {
+      danger: true,
+      confirmLabel: 'Import & replace',
+    });
+    if (!ok) return;
     try {
       const bundle = JSON.parse(await file.text()) as BackupBundle;
       importBackup(bundle);
@@ -79,6 +106,28 @@ export default function SettingsPage() {
 
       <div className="flex flex-col gap-6">
         <section className={sectionClass}>
+          <h2 className="mb-3 font-semibold">Appearance</h2>
+          <div className="border-stage-edge bg-stage-bg inline-flex rounded-full border p-1">
+            {THEME_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setTheme(opt.value)}
+                aria-pressed={theme === opt.value}
+                className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+                  theme === opt.value ? 'bg-stage-accent text-stage-bg' : 'text-stage-muted'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          <p className="text-stage-muted mt-2 text-xs">
+            "System" follows your device's light/dark setting automatically.
+          </p>
+        </section>
+
+        <section className={sectionClass}>
           <div className="mb-3 flex items-center justify-between">
             <h2 className="font-semibold">Foot pedal &amp; keyboard shortcuts</h2>
             <button type="button" onClick={resetBindings} className="text-stage-accent text-xs font-medium">
@@ -89,6 +138,42 @@ export default function SettingsPage() {
             Most Bluetooth/USB page-turner pedals act like a keyboard. Plug in or pair your pedal, click "Add key" next
             to an action, then press the pedal.
           </p>
+
+          <div className="border-stage-edge bg-stage-bg mb-4 rounded-lg border p-3">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-medium">Not sure what your pedal sends?</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setDetecting((v) => !v);
+                  setDetectedKeys([]);
+                }}
+                className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+                  detecting ? 'border-stage-accent text-stage-accent animate-pulse' : 'border-stage-edge text-stage-muted'
+                }`}
+              >
+                {detecting ? 'Stop testing' : 'Test your pedal'}
+              </button>
+            </div>
+            {detecting && (
+              <p className="text-stage-muted mt-2 text-sm">
+                Press any pedal button or key —{' '}
+                {detectedKeys.length === 0 ? (
+                  'waiting…'
+                ) : (
+                  <>
+                    last:{' '}
+                    {detectedKeys.map((k, i) => (
+                      <span key={i} className="border-stage-edge bg-stage-panel ml-1 rounded-full border px-2 py-0.5 text-xs">
+                        {formatKeyName(k)}
+                      </span>
+                    ))}
+                  </>
+                )}
+              </p>
+            )}
+          </div>
+
           <ul className="flex flex-col gap-2">
             {PEDAL_ACTIONS.map(({ action, label }) => {
               const keys = Object.entries(settings.pedalKeyMap)

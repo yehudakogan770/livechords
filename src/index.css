@@ -2,13 +2,37 @@
 
 @theme {
   --font-display: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --color-stage-bg: #0b0f14;
-  --color-stage-panel: #12181f;
-  --color-stage-edge: #1f2833;
-  --color-stage-text: #f5f7fa;
-  --color-stage-muted: #8b98a5;
-  --color-stage-chord: #ffb454;
-  --color-stage-accent: #4fd1c5;
+  /* Each token points at a plain custom property (below) rather than a literal
+     value, so :root[data-theme] can repaint the whole app without regenerating
+     any Tailwind utility classes. */
+  --color-stage-bg: var(--stage-bg);
+  --color-stage-panel: var(--stage-panel);
+  --color-stage-edge: var(--stage-edge);
+  --color-stage-text: var(--stage-text);
+  --color-stage-muted: var(--stage-muted);
+  --color-stage-chord: var(--stage-chord);
+  --color-stage-accent: var(--stage-accent);
+}
+
+:root,
+:root[data-theme="dark"] {
+  --stage-bg: #0b0f14;
+  --stage-panel: #12181f;
+  --stage-edge: #1f2833;
+  --stage-text: #f5f7fa;
+  --stage-muted: #8b98a5;
+  --stage-chord: #ffb454;
+  --stage-accent: #4fd1c5;
+}
+
+:root[data-theme="light"] {
+  --stage-bg: #f5f7fa;
+  --stage-panel: #ffffff;
+  --stage-edge: #dde3ea;
+  --stage-text: #12181f;
+  --stage-muted: #5b6b7a;
+  --stage-chord: #b45f06;
+  --stage-accent: #0f8f83;
 }
 
 html,

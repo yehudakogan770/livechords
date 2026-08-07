@@ -1,6 +1,8 @@
 import { type FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { useConfirm } from '../components/ConfirmDialog';
 import { IconTrash } from '../components/icons';
+import { useToast } from '../components/Toast';
 import { createSetlist, deleteSetlist, getSetlists } from '../data/storage';
 import type { Setlist } from '../types';
 
@@ -8,6 +10,8 @@ export default function SetlistsPage() {
   const [setlists, setSetlists] = useState<Setlist[]>(() => getSetlists());
   const [newName, setNewName] = useState('');
   const navigate = useNavigate();
+  const confirm = useConfirm();
+  const showToast = useToast();
 
   function handleCreate(e: FormEvent) {
     e.preventDefault();
@@ -18,10 +22,12 @@ export default function SetlistsPage() {
     navigate(`/setlists/${setlist.id}`);
   }
 
-  function handleDelete(setlist: Setlist) {
-    if (!window.confirm(`Delete setlist "${setlist.name}"?`)) return;
+  async function handleDelete(setlist: Setlist) {
+    const ok = await confirm(`Delete setlist "${setlist.name}"?`, { danger: true, confirmLabel: 'Delete' });
+    if (!ok) return;
     deleteSetlist(setlist.id);
     setSetlists(getSetlists());
+    showToast(`Deleted "${setlist.name}"`);
   }
 
   return (
