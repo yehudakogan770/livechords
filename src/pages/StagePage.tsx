@@ -5,6 +5,7 @@ import { StageBottomBar, StageTopBar } from '../components/StageChrome';
 import { getSetlist, getSettings, getSong, saveSong } from '../data/storage';
 import { parseSong } from '../lib/chordpro';
 import { toNashvilleContent } from '../lib/nashville';
+import { useSettingsPanel } from '../lib/SettingsPanelContext';
 import { estimateScrollSpeed, MAX_SCROLL_SPEED, MIN_SCROLL_SPEED, SCROLL_SPEED_STEP } from '../lib/scrollSpeed';
 import { formatTransposeOffset, transposeChord, transposeContent } from '../lib/transpose';
 import { useAutoScroll } from '../lib/useAutoScroll';
@@ -33,6 +34,7 @@ export default function StagePage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { toggle: toggleSettings } = useSettingsPanel();
 
   const [settings] = useState(getSettings);
   const [song, setSong] = useState<Song | undefined>(() => (songId ? getSong(songId) : undefined));
@@ -265,7 +267,7 @@ export default function StagePage() {
         capoLabel={capoLabel}
         setlistNote={setlistNote}
         onBack={() => navigate(-1)}
-        onSettings={() => navigate('/settings')}
+        onSettings={toggleSettings}
       />
 
       <StageBottomBar

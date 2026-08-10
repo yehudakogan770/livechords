@@ -1,11 +1,14 @@
 import { NavLink } from 'react-router';
 import { IconGuitar, IconListMusic, IconMic, IconSettings } from './icons';
+import { useSettingsPanel } from '../lib/SettingsPanelContext';
 
 const linkBase = 'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-colors';
 const linkActive = 'bg-stage-accent text-stage-bg';
 const linkInactive = 'text-stage-muted hover:text-stage-text';
 
 export function NavBar() {
+  const { open, toggle } = useSettingsPanel();
+
   return (
     <header className="border-stage-edge bg-stage-panel/80 sticky top-0 z-20 border-b backdrop-blur print:hidden">
       <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3">
@@ -26,15 +29,15 @@ export function NavBar() {
             Tuner
           </NavLink>
         </nav>
-        <NavLink
-          to="/settings"
+        <button
+          type="button"
+          onClick={toggle}
           aria-label="Settings"
-          className={({ isActive }) =>
-            `flex h-9 w-9 items-center justify-center rounded-full ${isActive ? 'bg-stage-accent text-stage-bg' : 'text-stage-muted hover:text-stage-text'}`
-          }
+          aria-pressed={open}
+          className={`flex h-9 w-9 items-center justify-center rounded-full ${open ? 'bg-stage-accent text-stage-bg' : 'text-stage-muted hover:text-stage-text'}`}
         >
           <IconSettings className="h-5 w-5" />
-        </NavLink>
+        </button>
       </div>
     </header>
   );

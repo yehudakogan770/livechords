@@ -4,13 +4,14 @@ import { Confetti } from './components/Confetti';
 import { ConfirmProvider } from './components/ConfirmDialog';
 import { InstallBanner } from './components/InstallBanner';
 import { NavBar } from './components/NavBar';
+import { SettingsPanel } from './components/SettingsPanel';
 import { ToastProvider, useToast } from './components/Toast';
-import { useKonamiCode } from './lib/useKonamiCode';
+import { SettingsPanelProvider } from './lib/SettingsPanelContext';
 import { ThemeProvider } from './lib/ThemeContext';
+import { useKonamiCode } from './lib/useKonamiCode';
 import LibraryPage from './pages/LibraryPage';
 import SetlistEditorPage from './pages/SetlistEditorPage';
 import SetlistsPage from './pages/SetlistsPage';
-import SettingsPage from './pages/SettingsPage';
 import SongEditorPage from './pages/SongEditorPage';
 import StagePage from './pages/StagePage';
 import TunerPage from './pages/TunerPage';
@@ -42,21 +43,24 @@ function App() {
     <ThemeProvider>
       <ToastProvider>
         <ConfirmProvider>
-          <Routes>
-            {/* Stage View owns the full screen with its own chrome — no library nav bar. */}
-            <Route path="/stage/:songId" element={<StagePage />} />
+          <SettingsPanelProvider>
+            <Routes>
+              {/* Stage View owns the full screen with its own chrome — no library nav bar. */}
+              <Route path="/stage/:songId" element={<StagePage />} />
 
-            <Route element={<AppLayout />}>
-              <Route path="/" element={<LibraryPage />} />
-              <Route path="/song/new" element={<SongEditorPage />} />
-              <Route path="/song/:songId/edit" element={<SongEditorPage />} />
-              <Route path="/setlists" element={<SetlistsPage />} />
-              <Route path="/setlists/:setlistId" element={<SetlistEditorPage />} />
-              <Route path="/tuner" element={<TunerPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Route>
-          </Routes>
+              <Route element={<AppLayout />}>
+                <Route path="/" element={<LibraryPage />} />
+                <Route path="/song/new" element={<SongEditorPage />} />
+                <Route path="/song/:songId/edit" element={<SongEditorPage />} />
+                <Route path="/setlists" element={<SetlistsPage />} />
+                <Route path="/setlists/:setlistId" element={<SetlistEditorPage />} />
+                <Route path="/tuner" element={<TunerPage />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Route>
+            </Routes>
+            {/* Rendered outside the route tree so it overlays Stage View too, not just AppLayout pages. */}
+            <SettingsPanel />
+          </SettingsPanelProvider>
         </ConfirmProvider>
       </ToastProvider>
     </ThemeProvider>

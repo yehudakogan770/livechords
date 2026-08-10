@@ -1,0 +1,390 @@
+import { type ChangeEvent, useEffect, useRef, useState } from 'react';
+import { useConfirm } from './ConfirmDialog';
+import { inputClass, labelClass, sectionClass } from './formStyles';
+import { IconX } from './icons';
+import { DEFAULT_SETTINGS, exportBackup, getSettings, importBackup, saveSettings, type BackupBundle } from '../data/storage';
+import { useSettingsPanel } from '../lib/SettingsPanelContext';
+import { useTheme } from '../lib/ThemeContext';
+import { PEDAL_ACTIONS, STAGE_CONTROL_LABELS } from '../types';
+import type { AccidentalPreference, AppSettings, PedalAction, StageControl, Theme } from '../types';
+
+const THEME_OPTIONS: { value: Theme; label: string }[] = [
+  { value: 'dark', label: 'Dark' },
+  { value: 'light', label: 'Light' },
+  { value: 'system', label: 'System' },
+];
+
+function formatKeyName(key: string): string {
+  return key === ' ' ? 'Space' : key;
+}
+
+export function SettingsPanel() {
+  const { open, close } = useSettingsPanel();
+  const { theme, setTheme } = useTheme();
+  const confirm = useConfirm();
+  const [settings, setSettings] = useState<AppSettings>(getSettings);
+  const [listeningFor, setListeningFor] = useState<PedalAction | null>(null);
+  const [importMessage, setImportMessage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [detecting, setDetecting] = useState(false);
+  const [detectedKeys, setDetectedKeys] = useState<string[]>([]);
+
+  // Pick up any changes made elsewhere (or on a previous open) each time the panel opens.
+  useEffect(() => {
+    if (open) setSettings(getSettings());
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') close();
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [open, close]);
+
+  useEffect(() => {
+    if (!detecting) return;
+    function handleKeyDown(e: KeyboardEvent) {
+      e.preventDefault();
+      setDetectedKeys((prev) => [e.key, ...prev].slice(0, 5));
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [detecting]);
+
+  function update(patch: Partial<AppSettings> | ((prev: AppSettings) => Partial<AppSettings>)) {
+    setSettings((prev) => {
+      const patchObj = typeof patch === 'function' ? patch(prev) : patch;
+      const next = { ...prev, ...patchObj };
+      saveSettings(next);
+      return next;
+    });
+  }
+
+  function toggleStageControl(control: StageControl, enabled: boolean) {
+    update((prev) => ({
+      stageControls: enabled ? [...prev.stageControls, control] : prev.stageControls.filter((c) => c !== control),
+    }));
+  }
+
+  useEffect(() => {
+    if (!listeningFor) return;
+    const action = listeningFor;
+    function handleKeyDown(e: KeyboardEvent) {
+      e.preventDefault();
+      update((prev) => ({ pedalKeyMap: { ...prev.pedalKeyMap, [e.key]: action } }));
+      setListeningFor(null);
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [listeningFor]);
+
+  function removeBinding(key: string) {
+    update((prev) => {
+      const nextMap = { ...prev.pedalKeyMap };
+      delete nextMap[key];
+      return { pedalKeyMap: nextMap };
+    });
+  }
+
+  async function resetBindings() {
+    const ok = await confirm('Reset pedal key bindings to the defaults?', { confirmLabel: 'Reset' });
+    if (!ok) return;
+    update({ pedalKeyMap: { ...DEFAULT_SETTINGS.pedalKeyMap } });
+  }
+
+  function handleExport() {
+    const blob = new Blob([JSON.stringify(exportBackup(), null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `livechords-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function handleImportFile(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const ok = await confirm('Import this backup? It will replace all current songs, setlists, and settings.', {
+      danger: true,
+      confirmLabel: 'Import & replace',
+    });
+    if (!ok) return;
+    try {
+      const bundle = JSON.parse(await file.text()) as BackupBundle;
+      importBackup(bundle);
+      setImportMessage('Backup imported. Reloading…');
+      setTimeout(() => window.location.reload(), 800);
+    } catch {
+      setImportMessage('That file could not be read as a LiveChords backup.');
+    }
+  }
+
+  if (!open) return null;
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Settings"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-6 print:hidden"
+      onClick={close}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="border-stage-edge bg-stage-panel flex max-h-[85vh] w-full max-w-2xl flex-col rounded-xl border shadow-xl"
+      >
+        <div className="border-stage-edge flex shrink-0 items-center justify-between border-b px-5 py-4">
+          <h1 className="text-xl font-semibold">Settings</h1>
+          <button
+            type="button"
+            aria-label="Close settings"
+            onClick={close}
+            className="text-stage-muted hover:text-stage-text flex h-8 w-8 items-center justify-center rounded-full"
+          >
+            <IconX className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-6 overflow-y-auto px-5 py-5">
+          <section className={sectionClass}>
+            <h2 className="mb-3 font-semibold">Appearance</h2>
+            <div className="border-stage-edge bg-stage-bg inline-flex rounded-full border p-1">
+              {THEME_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setTheme(opt.value)}
+                  aria-pressed={theme === opt.value}
+                  className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+                    theme === opt.value ? 'bg-stage-accent text-stage-bg' : 'text-stage-muted'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-stage-muted mt-2 text-xs">
+              "System" follows your device's light/dark setting automatically.
+            </p>
+          </section>
+
+          <section className={sectionClass}>
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="font-semibold">Foot pedal &amp; keyboard shortcuts</h2>
+              <button type="button" onClick={resetBindings} className="text-stage-accent text-xs font-medium">
+                Reset to defaults
+              </button>
+            </div>
+            <p className="text-stage-muted mb-3 text-sm">
+              Most Bluetooth/USB page-turner pedals act like a keyboard. Plug in or pair your pedal, click "Add key"
+              next to an action, then press the pedal.
+            </p>
+
+            <div className="border-stage-edge bg-stage-bg mb-4 rounded-lg border p-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-medium">Not sure what your pedal sends?</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDetecting((v) => !v);
+                    setDetectedKeys([]);
+                  }}
+                  className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+                    detecting ? 'border-stage-accent text-stage-accent animate-pulse' : 'border-stage-edge text-stage-muted'
+                  }`}
+                >
+                  {detecting ? 'Stop testing' : 'Test your pedal'}
+                </button>
+              </div>
+              {detecting && (
+                <p className="text-stage-muted mt-2 text-sm">
+                  Press any pedal button or key —{' '}
+                  {detectedKeys.length === 0 ? (
+                    'waiting…'
+                  ) : (
+                    <>
+                      last:{' '}
+                      {detectedKeys.map((k, i) => (
+                        <span key={i} className="border-stage-edge bg-stage-panel ml-1 rounded-full border px-2 py-0.5 text-xs">
+                          {formatKeyName(k)}
+                        </span>
+                      ))}
+                    </>
+                  )}
+                </p>
+              )}
+            </div>
+
+            <ul className="flex flex-col gap-2">
+              {PEDAL_ACTIONS.map(({ action, label }) => {
+                const keys = Object.entries(settings.pedalKeyMap)
+                  .filter(([, a]) => a === action)
+                  .map(([key]) => key);
+                return (
+                  <li key={action} className="flex flex-wrap items-center gap-2">
+                    <span className="w-40 shrink-0 text-sm">{label}</span>
+                    {keys.map((key) => (
+                      <span
+                        key={key}
+                        className="border-stage-edge bg-stage-bg flex items-center gap-1 rounded-full border px-2 py-1 text-xs"
+                      >
+                        {formatKeyName(key)}
+                        <button
+                          type="button"
+                          aria-label={`Remove ${formatKeyName(key)} binding`}
+                          onClick={() => removeBinding(key)}
+                          className="text-stage-muted hover:text-red-400"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setListeningFor(action)}
+                      className={`rounded-full border px-2 py-1 text-xs font-medium ${
+                        listeningFor === action
+                          ? 'border-stage-accent text-stage-accent animate-pulse'
+                          : 'border-stage-edge text-stage-muted'
+                      }`}
+                    >
+                      {listeningFor === action ? 'Press a key…' : '+ Add key'}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+
+          <section className={sectionClass}>
+            <h2 className="mb-3 font-semibold">Display defaults</h2>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={labelClass} htmlFor="default-font">
+                  Default text size (px)
+                </label>
+                <input
+                  id="default-font"
+                  type="number"
+                  min={18}
+                  max={120}
+                  className={inputClass}
+                  value={settings.defaultFontSizePx}
+                  onChange={(e) => update({ defaultFontSizePx: Number(e.target.value) || DEFAULT_SETTINGS.defaultFontSizePx })}
+                />
+              </div>
+              <div>
+                <label className={labelClass} htmlFor="default-speed">
+                  Default scroll speed (px/s)
+                </label>
+                <input
+                  id="default-speed"
+                  type="number"
+                  min={4}
+                  max={200}
+                  className={inputClass}
+                  value={settings.defaultScrollSpeed}
+                  onChange={(e) =>
+                    update({ defaultScrollSpeed: Number(e.target.value) || DEFAULT_SETTINGS.defaultScrollSpeed })
+                  }
+                />
+              </div>
+            </div>
+            <p className="text-stage-muted mt-1 text-xs">Used for new songs that don't have a BPM set yet.</p>
+
+            <div className="mt-4">
+              <label className={labelClass} htmlFor="accidental-pref">
+                Sharp / flat spelling when transposing
+              </label>
+              <select
+                id="accidental-pref"
+                className={inputClass}
+                value={settings.accidentalPreference}
+                onChange={(e) => update({ accidentalPreference: e.target.value as AccidentalPreference })}
+              >
+                <option value="auto">Auto (match the original chord's spelling)</option>
+                <option value="sharp">Always sharps (F#, C#…)</option>
+                <option value="flat">Always flats (Gb, Db…)</option>
+              </select>
+            </div>
+          </section>
+
+          <section className={sectionClass}>
+            <h2 className="mb-3 font-semibold">Stage behavior</h2>
+            <label className="flex items-center justify-between gap-3 py-1.5 text-sm">
+              Keep screen awake during performance
+              <input
+                type="checkbox"
+                checked={settings.keepScreenAwake}
+                onChange={(e) => update({ keepScreenAwake: e.target.checked })}
+                className="h-5 w-5"
+              />
+            </label>
+            <label className="flex items-center justify-between gap-3 py-1.5 text-sm">
+              Auto-advance to the next song when a setlist song finishes scrolling
+              <input
+                type="checkbox"
+                checked={settings.autoAdvanceToNextInSetlist}
+                onChange={(e) => update({ autoAdvanceToNextInSetlist: e.target.checked })}
+                className="h-5 w-5"
+              />
+            </label>
+          </section>
+
+          <section className={sectionClass}>
+            <h2 className="mb-1 font-semibold">Customize Stage View</h2>
+            <p className="text-stage-muted mb-3 text-sm">
+              Play/pause is always there. Choose which other controls show up while you're performing — keep it
+              lean, or turn on every tool.
+            </p>
+            <ul className="flex flex-col gap-1">
+              {STAGE_CONTROL_LABELS.map(({ control, label }) => (
+                <li key={control}>
+                  <label className="flex items-center justify-between gap-3 py-1.5 text-sm">
+                    {label}
+                    <input
+                      type="checkbox"
+                      checked={settings.stageControls.includes(control)}
+                      onChange={(e) => toggleStageControl(control, e.target.checked)}
+                      className="h-5 w-5"
+                    />
+                  </label>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          <section className={sectionClass}>
+            <h2 className="mb-3 font-semibold">Backup</h2>
+            <p className="text-stage-muted mb-3 text-sm">
+              Everything is stored on this device only. Export a backup before switching devices or clearing browser
+              data.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={handleExport}
+                className="bg-stage-panel border-stage-edge rounded-full border px-4 py-2 text-sm font-semibold"
+              >
+                Export backup
+              </button>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="bg-stage-panel border-stage-edge rounded-full border px-4 py-2 text-sm font-semibold"
+              >
+                Import backup
+              </button>
+              <input ref={fileInputRef} type="file" accept="application/json" className="hidden" onChange={handleImportFile} />
+            </div>
+            {importMessage && <p className="text-stage-muted mt-2 text-sm">{importMessage}</p>}
+          </section>
+        </div>
+      </div>
+    </div>
+  );
+}
