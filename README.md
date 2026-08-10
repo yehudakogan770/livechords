@@ -71,9 +71,16 @@ bands, and solo gigging musicians.
   chords), handy while learning or rehearsing a chart.
 - **Duplicate a song** ("Save As") to quickly build a variation of an
   existing chart.
+- **Deleted something by mistake?** Every delete (a song, a bulk selection,
+  a setlist) shows an Undo button in the confirmation toast.
+- **Keyboard shortcuts** in the Library: press `/` to jump to search, `?` to
+  see the full list.
 
 ### Sharing & backup
 
+- **Export or import a single song** as a plain-text ChordPro file — a
+  lossless way to hand one chart to another musician or move it into another
+  ChordPro-compatible app, independent of the OCR photo scanner.
 - **Print or save a chart — or a whole setlist — as a PDF** — one-click
   "Print / Save as PDF" buttons in the song editor and the setlist editor use
   the browser's native print pipeline (no extra download, works with any

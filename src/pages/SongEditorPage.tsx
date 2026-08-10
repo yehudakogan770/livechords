@@ -4,7 +4,8 @@ import { ChordDiagram } from '../components/ChordDiagram';
 import { ChordSheet } from '../components/ChordSheet';
 import { useConfirm } from '../components/ConfirmDialog';
 import { inputClass, labelClass } from '../components/formStyles';
-import { IconCamera, IconCopy, IconPrinter, IconTrash } from '../components/icons';
+import { IconCamera, IconCopy, IconDownload, IconPrinter, IconTrash, IconUpload } from '../components/icons';
+import { useToast } from '../components/Toast';
 import { createSong, deleteSong, getSong, getSongs, saveSong } from '../data/storage';
 import { extractChords, parseSong } from '../lib/chordpro';
 import { getChordShape } from '../lib/chordShapes';
@@ -22,6 +23,7 @@ export default function SongEditorPage() {
   const { songId } = useParams<{ songId: string }>();
   const navigate = useNavigate();
   const confirm = useConfirm();
+  const showToast = useToast();
   const existing = useMemo(() => (songId ? getSong(songId) : undefined), [songId]);
 
   const [title, setTitle] = useState('');
@@ -36,6 +38,7 @@ export default function SongEditorPage() {
   const [scanProgress, setScanProgress] = useState<OcrProgress | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
   const tapTempoRef = useRef(createTapTempo());
 
   function handleTapTempo() {
@@ -72,12 +75,33 @@ export default function SongEditorPage() {
     [content],
   );
 
-  function fillFromContent() {
-    const { meta } = parseSong(content);
+  function fillFromContent(sourceText: string = content) {
+    const { meta } = parseSong(sourceText);
     if (meta.title && !title.trim()) setTitle(meta.title);
     if (meta.artist && !artist.trim()) setArtist(meta.artist);
     if (meta.key && !originalKey.trim()) setOriginalKey(meta.key);
     if (meta.bpm && !bpm.trim()) setBpm(String(meta.bpm));
+  }
+
+  async function handleImportFile(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const text = await file.text();
+    setContent(text);
+    fillFromContent(text);
+    showToast(`Imported "${file.name}"`);
+  }
+
+  function handleExportFile() {
+    const filename = (title.trim() || 'song').replace(/[\\/:*?"<>|]+/g, '').trim() || 'song';
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${filename}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   async function handlePhotoSelected(e: ChangeEvent<HTMLInputElement>) {
@@ -134,9 +158,11 @@ export default function SongEditorPage() {
 
   async function handleDelete() {
     if (!existing) return;
-    const ok = await confirm(`Delete "${existing.title}"? This can't be undone.`, { danger: true, confirmLabel: 'Delete' });
+    const ok = await confirm(`Delete "${existing.title}"?`, { danger: true, confirmLabel: 'Delete' });
     if (!ok) return;
+    const deleted = existing;
     deleteSong(existing.id);
+    showToast(`Deleted "${deleted.title}"`, { label: 'Undo', onClick: () => saveSong(deleted) });
     navigate('/');
   }
 
@@ -152,6 +178,14 @@ export default function SongEditorPage() {
         <h1 className="text-xl font-semibold">{existing ? 'Edit Song' : 'New Song'}</h1>
         {existing && (
           <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={handleExportFile}
+              className="text-stage-muted flex items-center gap-1 rounded-full px-3 py-1.5 text-sm hover:text-stage-text"
+            >
+              <IconDownload className="h-4 w-4" />
+              Export
+            </button>
             <button
               type="button"
               onClick={handleDuplicate}
@@ -296,8 +330,16 @@ export default function SongEditorPage() {
                   <IconCamera className="h-3.5 w-3.5" />
                   {scanProgress ? 'Scanning…' : 'Scan a photo'}
                 </button>
-                <button type="button" onClick={fillFromContent} className="text-stage-accent text-xs font-medium">
+                <button type="button" onClick={() => fillFromContent()} className="text-stage-accent text-xs font-medium">
                   Fill details from pasted chart
+                </button>
+                <button
+                  type="button"
+                  onClick={() => importInputRef.current?.click()}
+                  className="text-stage-accent flex items-center gap-1 text-xs font-medium"
+                >
+                  <IconUpload className="h-3.5 w-3.5" />
+                  Import file
                 </button>
               </div>
             </div>
@@ -308,6 +350,13 @@ export default function SongEditorPage() {
               capture="environment"
               className="hidden"
               onChange={handlePhotoSelected}
+            />
+            <input
+              ref={importInputRef}
+              type="file"
+              accept=".txt,.cho,.chordpro,.crd,text/plain"
+              className="hidden"
+              onChange={handleImportFile}
             />
             {scanProgress && (
               <div className="border-stage-edge bg-stage-panel mb-2 rounded-lg border px-3 py-2 text-xs">

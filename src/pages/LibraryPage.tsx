@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useConfirm } from '../components/ConfirmDialog';
 import { IconPlay, IconPlus, IconSearch, IconStar, IconTrash, IconX } from '../components/icons';
@@ -57,9 +57,28 @@ export default function LibraryPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkStyle, setBulkStyle] = useState('');
   const [bulkSetlistId, setBulkSetlistId] = useState('');
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const confirm = useConfirm();
   const showToast = useToast();
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      const target = e.target as HTMLElement;
+      const isTyping = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+      if (isTyping) return;
+      if (e.key === '/') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      } else if (e.key === '?') {
+        e.preventDefault();
+        setShowShortcuts(true);
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -84,10 +103,17 @@ export default function LibraryPage() {
   }
 
   async function handleDelete(song: Song) {
-    const ok = await confirm(`Delete "${song.title}"? This can't be undone.`, { danger: true, confirmLabel: 'Delete' });
+    const ok = await confirm(`Delete "${song.title}"?`, { danger: true, confirmLabel: 'Delete' });
     if (!ok) return;
     deleteSong(song.id);
     refresh();
+    showToast(`Deleted "${song.title}"`, {
+      label: 'Undo',
+      onClick: () => {
+        saveSong(song);
+        refresh();
+      },
+    });
   }
 
   function toggleFavorite(song: Song) {
@@ -117,13 +143,20 @@ export default function LibraryPage() {
 
   async function handleBulkDelete() {
     const n = selectedIds.size;
-    const ok = await confirm(`Delete ${n} song${n === 1 ? '' : 's'}? This can't be undone.`, {
+    const ok = await confirm(`Delete ${n} song${n === 1 ? '' : 's'}?`, {
       danger: true,
       confirmLabel: 'Delete',
     });
     if (!ok) return;
+    const deleted = songs.filter((s) => selectedIds.has(s.id));
     for (const id of selectedIds) deleteSong(id);
-    showToast(`Deleted ${n} song${n === 1 ? '' : 's'}`);
+    showToast(`Deleted ${n} song${n === 1 ? '' : 's'}`, {
+      label: 'Undo',
+      onClick: () => {
+        for (const song of deleted) saveSong(song);
+        refresh();
+      },
+    });
     setSelectedIds(new Set());
     refresh();
   }
@@ -182,9 +215,10 @@ export default function LibraryPage() {
         <div className="relative sm:min-w-[12rem] sm:flex-1">
           <IconSearch className="text-stage-muted pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
           <input
+            ref={searchInputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search title, artist, style, or tag…"
+            placeholder="Search title, artist, style, or tag…  (press /)"
             className="border-stage-edge bg-stage-panel placeholder:text-stage-muted w-full rounded-lg border py-2 pr-3 pl-9 focus:outline-none"
           />
           {query && (
@@ -198,6 +232,14 @@ export default function LibraryPage() {
             </button>
           )}
         </div>
+        <button
+          type="button"
+          aria-label="Keyboard shortcuts"
+          onClick={() => setShowShortcuts(true)}
+          className="border-stage-edge text-stage-muted hidden h-9 w-9 shrink-0 items-center justify-center rounded-full border text-sm font-semibold sm:flex"
+        >
+          ?
+        </button>
         <button
           type="button"
           onClick={() => setFavoritesOnly((v) => !v)}
@@ -418,6 +460,40 @@ export default function LibraryPage() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {showShortcuts && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4"
+          onClick={() => setShowShortcuts(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="border-stage-edge bg-stage-panel w-full max-w-sm rounded-xl border p-5 shadow-xl"
+          >
+            <h2 className="mb-3 font-semibold">Keyboard shortcuts</h2>
+            <ul className="flex flex-col gap-2 text-sm">
+              <li className="flex items-center justify-between">
+                <span className="text-stage-muted">Focus search</span>
+                <kbd className="border-stage-edge bg-stage-bg rounded border px-2 py-0.5 font-mono text-xs">/</kbd>
+              </li>
+              <li className="flex items-center justify-between">
+                <span className="text-stage-muted">Show this help</span>
+                <kbd className="border-stage-edge bg-stage-bg rounded border px-2 py-0.5 font-mono text-xs">?</kbd>
+              </li>
+            </ul>
+            <p className="text-stage-muted mt-3 text-xs">
+              Foot-pedal and Stage View bindings are configurable in Settings.
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowShortcuts(false)}
+              className="bg-stage-panel border-stage-edge mt-4 rounded-full border px-4 py-2 text-sm font-semibold"
+            >
+              Close
+            </button>
+          </div>
         </div>
       )}
     </div>

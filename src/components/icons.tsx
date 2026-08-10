@@ -220,3 +220,13 @@ export function IconDownload(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function IconUpload(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Svg {...props}>
+      <path d="M12 21V9" />
+      <path d="m7 14 5-5 5 5" />
+      <path d="M5 3h14" />
+    </Svg>
+  );
+}
+

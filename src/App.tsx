@@ -1,8 +1,11 @@
+import { useCallback, useState } from 'react';
 import { Navigate, Outlet, Route, Routes } from 'react-router';
+import { Confetti } from './components/Confetti';
 import { ConfirmProvider } from './components/ConfirmDialog';
 import { InstallBanner } from './components/InstallBanner';
 import { NavBar } from './components/NavBar';
-import { ToastProvider } from './components/Toast';
+import { ToastProvider, useToast } from './components/Toast';
+import { useKonamiCode } from './lib/useKonamiCode';
 import { ThemeProvider } from './lib/ThemeContext';
 import LibraryPage from './pages/LibraryPage';
 import SetlistEditorPage from './pages/SetlistEditorPage';
@@ -12,6 +15,15 @@ import SongEditorPage from './pages/SongEditorPage';
 import StagePage from './pages/StagePage';
 
 function AppLayout() {
+  const showToast = useToast();
+  const [confettiActive, setConfettiActive] = useState(false);
+
+  const triggerEasterEgg = useCallback(() => {
+    setConfettiActive(true);
+    showToast('🎸 Rock on! You found the secret.');
+  }, [showToast]);
+  useKonamiCode(triggerEasterEgg);
+
   return (
     <div className="bg-stage-bg text-stage-text min-h-dvh print:bg-white print:text-black">
       <NavBar />
@@ -19,6 +31,7 @@ function AppLayout() {
       <main>
         <Outlet />
       </main>
+      {confettiActive && <Confetti onDone={() => setConfettiActive(false)} />}
     </div>
   );
 }

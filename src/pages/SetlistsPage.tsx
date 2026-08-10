@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router';
 import { useConfirm } from '../components/ConfirmDialog';
 import { IconTrash } from '../components/icons';
 import { useToast } from '../components/Toast';
-import { createSetlist, deleteSetlist, getSetlists } from '../data/storage';
+import { createSetlist, deleteSetlist, getSetlists, saveSetlist } from '../data/storage';
 import type { Setlist } from '../types';
 
 export default function SetlistsPage() {
@@ -27,7 +27,13 @@ export default function SetlistsPage() {
     if (!ok) return;
     deleteSetlist(setlist.id);
     setSetlists(getSetlists());
-    showToast(`Deleted "${setlist.name}"`);
+    showToast(`Deleted "${setlist.name}"`, {
+      label: 'Undo',
+      onClick: () => {
+        saveSetlist(setlist);
+        setSetlists(getSetlists());
+      },
+    });
   }
 
   return (
