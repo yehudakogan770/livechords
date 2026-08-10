@@ -3,8 +3,8 @@ import { useConfirm } from '../components/ConfirmDialog';
 import { inputClass, labelClass, sectionClass } from '../components/formStyles';
 import { DEFAULT_SETTINGS, exportBackup, getSettings, importBackup, saveSettings, type BackupBundle } from '../data/storage';
 import { useTheme } from '../lib/ThemeContext';
-import { PEDAL_ACTIONS } from '../types';
-import type { AccidentalPreference, AppSettings, PedalAction, Theme } from '../types';
+import { PEDAL_ACTIONS, STAGE_CONTROL_LABELS } from '../types';
+import type { AccidentalPreference, AppSettings, PedalAction, StageControl, Theme } from '../types';
 
 const THEME_OPTIONS: { value: Theme; label: string }[] = [
   { value: 'dark', label: 'Dark' },
@@ -43,6 +43,12 @@ export default function SettingsPage() {
       saveSettings(next);
       return next;
     });
+  }
+
+  function toggleStageControl(control: StageControl, enabled: boolean) {
+    update((prev) => ({
+      stageControls: enabled ? [...prev.stageControls, control] : prev.stageControls.filter((c) => c !== control),
+    }));
   }
 
   useEffect(() => {
@@ -288,6 +294,29 @@ export default function SettingsPage() {
               className="h-5 w-5"
             />
           </label>
+        </section>
+
+        <section className={sectionClass}>
+          <h2 className="mb-1 font-semibold">Customize Stage View</h2>
+          <p className="text-stage-muted mb-3 text-sm">
+            Play/pause is always there. Choose which other controls show up while you're performing — keep it lean,
+            or turn on every tool.
+          </p>
+          <ul className="flex flex-col gap-1">
+            {STAGE_CONTROL_LABELS.map(({ control, label }) => (
+              <li key={control}>
+                <label className="flex items-center justify-between gap-3 py-1.5 text-sm">
+                  {label}
+                  <input
+                    type="checkbox"
+                    checked={settings.stageControls.includes(control)}
+                    onChange={(e) => toggleStageControl(control, e.target.checked)}
+                    className="h-5 w-5"
+                  />
+                </label>
+              </li>
+            ))}
+          </ul>
         </section>
 
         <section className={sectionClass}>

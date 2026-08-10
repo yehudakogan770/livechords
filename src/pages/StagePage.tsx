@@ -207,6 +207,7 @@ export default function StagePage() {
     ? `Capo ${song.capo}${displayKey ? ` · sounds ${transposeChord(displayKey, song.capo, settings.accidentalPreference)}` : ''}`
     : null;
   const setlistNote = setlist?.notes[song.id] || null;
+  const stageControls = settings.stageControls;
 
   return (
     <div className="bg-stage-bg text-stage-text relative h-dvh overflow-hidden">
@@ -274,18 +275,22 @@ export default function StagePage() {
         scrollSpeed={scrollSpeed}
         fontSizePx={fontSize}
         canSyncTempo={Boolean(song.bpm)}
-        canNashville={Boolean(song.originalKey)}
+        canNashville={Boolean(song.originalKey) && stageControls.includes('nashville')}
         nashvilleActive={nashville}
         onToggleNashville={() => {
           setNashville((v) => !v);
           bumpControls();
         }}
-        canMetronome={Boolean(song.bpm)}
+        canMetronome={Boolean(song.bpm) && stageControls.includes('metronome')}
         metronomeActive={metronome.playing}
         onToggleMetronome={() => {
           metronome.toggle();
           bumpControls();
         }}
+        showFontSize={stageControls.includes('fontSize')}
+        showTranspose={stageControls.includes('transpose')}
+        showScrollSpeed={stageControls.includes('scrollSpeed')}
+        showRestart={stageControls.includes('restart')}
         onTogglePlay={() => {
           autoScroll.toggle();
           bumpControls();

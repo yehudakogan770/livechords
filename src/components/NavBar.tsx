@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router';
-import { IconListMusic, IconMic, IconSettings } from './icons';
+import { IconGuitar, IconListMusic, IconMic, IconSettings } from './icons';
 
 const linkBase = 'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-colors';
 const linkActive = 'bg-stage-accent text-stage-bg';
@@ -20,6 +20,10 @@ export function NavBar() {
           <NavLink to="/setlists" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}>
             <IconListMusic className="h-4 w-4" />
             Setlists
+          </NavLink>
+          <NavLink to="/tuner" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}>
+            <IconGuitar className="h-4 w-4" />
+            Tuner
           </NavLink>
         </nav>
         <NavLink

@@ -51,6 +51,18 @@ bands, and solo gigging musicians.
   finishes scrolling, drag-and-drop reordering (touch and mouse), and a
   free-text note per song in the set (capo, key change, count-off, ...) shown
   right in the performance chrome.
+- **Customize Stage View** — play/pause is always there, but everything else
+  (text size, transpose, scroll speed, restart, Nashville numbers, metronome)
+  can be shown or hidden per your taste in Settings → Customize Stage View, so
+  the screen you actually perform from stays as lean as you want it, no
+  matter how many tools the rest of the app has.
+
+### Tools
+
+- **Guitar tuner** — an on-device chromatic tuner using your microphone
+  (nothing is recorded or leaves the device): a note + cents readout, an
+  in-tune meter, and a nearest-standard-string reference. Its own page, kept
+  separate from Stage View so it never gets in the way mid-performance.
 
 ### Library
 
@@ -128,7 +140,7 @@ That [G]saved a [Em]wretch like [D]me
 npm install
 npm run dev        # start the dev server
 npm test           # run the unit tests (chord parsing, transposition, Nashville numbers, chord shapes,
-                    #   scroll speed, tap tempo, OCR reconstruction)
+                    #   scroll speed, tap tempo, pitch detection, OCR reconstruction)
 npm run typecheck  # TypeScript project check
 npm run build      # production build (dist/) with the PWA service worker
 ```

@@ -111,6 +111,10 @@ interface StageBottomBarProps {
   nashvilleActive: boolean;
   canMetronome: boolean;
   metronomeActive: boolean;
+  showFontSize: boolean;
+  showTranspose: boolean;
+  showScrollSpeed: boolean;
+  showRestart: boolean;
   onTogglePlay: () => void;
   onRestart: () => void;
   onFontDown: () => void;
@@ -169,6 +173,10 @@ export function StageBottomBar({
   nashvilleActive,
   canMetronome,
   metronomeActive,
+  showFontSize,
+  showTranspose,
+  showScrollSpeed,
+  showRestart,
   onTogglePlay,
   onRestart,
   onFontDown,
@@ -188,23 +196,34 @@ export function StageBottomBar({
       }`}
       style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
     >
-      <ControlGroup label={`Text ${fontSizePx}px`}>
-        <RoundButton label="Smaller text" onClick={onFontDown}>
-          <IconMinus className="h-5 w-5" />
-        </RoundButton>
-        <RoundButton label="Bigger text" onClick={onFontUp}>
-          <IconPlus className="h-5 w-5" />
+      {/* Play/pause is the one control that's never hidden — it's the whole point of the app. */}
+      <ControlGroup label={playing ? 'Playing' : 'Paused'}>
+        <RoundButton label={playing ? 'Pause auto-scroll' : 'Play auto-scroll'} onClick={onTogglePlay} emphasize>
+          {playing ? <IconPause className="h-5 w-5" /> : <IconPlay className="h-5 w-5" />}
         </RoundButton>
       </ControlGroup>
 
-      <ControlGroup label={`Key ${transposeLabel}`}>
-        <RoundButton label="Transpose down" onClick={onTransposeDown}>
-          <IconMinus className="h-5 w-5" />
-        </RoundButton>
-        <RoundButton label="Transpose up" onClick={onTransposeUp}>
-          <IconPlus className="h-5 w-5" />
-        </RoundButton>
-      </ControlGroup>
+      {showFontSize && (
+        <ControlGroup label={`Text ${fontSizePx}px`}>
+          <RoundButton label="Smaller text" onClick={onFontDown}>
+            <IconMinus className="h-5 w-5" />
+          </RoundButton>
+          <RoundButton label="Bigger text" onClick={onFontUp}>
+            <IconPlus className="h-5 w-5" />
+          </RoundButton>
+        </ControlGroup>
+      )}
+
+      {showTranspose && (
+        <ControlGroup label={`Key ${transposeLabel}`}>
+          <RoundButton label="Transpose down" onClick={onTransposeDown}>
+            <IconMinus className="h-5 w-5" />
+          </RoundButton>
+          <RoundButton label="Transpose up" onClick={onTransposeUp}>
+            <IconPlus className="h-5 w-5" />
+          </RoundButton>
+        </ControlGroup>
+      )}
 
       {canNashville && (
         <ControlGroup label="Numbers">
@@ -222,32 +241,33 @@ export function StageBottomBar({
         </ControlGroup>
       )}
 
-      <ControlGroup label={`Scroll ${scrollSpeed}px/s`}>
-        <RoundButton label="Scroll slower" onClick={onSpeedDown}>
-          <IconMinus className="h-5 w-5" />
-        </RoundButton>
-        <RoundButton label={playing ? 'Pause auto-scroll' : 'Play auto-scroll'} onClick={onTogglePlay} emphasize>
-          {playing ? <IconPause className="h-5 w-5" /> : <IconPlay className="h-5 w-5" />}
-        </RoundButton>
-        <RoundButton label="Scroll faster" onClick={onSpeedUp}>
-          <IconPlus className="h-5 w-5" />
-        </RoundButton>
-      </ControlGroup>
+      {showScrollSpeed && (
+        <ControlGroup label={`Scroll ${scrollSpeed}px/s`}>
+          <RoundButton label="Scroll slower" onClick={onSpeedDown}>
+            <IconMinus className="h-5 w-5" />
+          </RoundButton>
+          <RoundButton label="Scroll faster" onClick={onSpeedUp}>
+            <IconPlus className="h-5 w-5" />
+          </RoundButton>
+        </ControlGroup>
+      )}
 
-      <ControlGroup label="Restart">
-        <RoundButton label="Restart from top" onClick={onRestart}>
-          <IconRestart className="h-5 w-5" />
-        </RoundButton>
-        {canSyncTempo && (
-          <button
-            type="button"
-            onClick={onSyncTempo}
-            className="text-stage-bg bg-stage-accent h-11 shrink-0 rounded-full px-3 text-xs font-semibold active:scale-95"
-          >
-            Sync to tempo
-          </button>
-        )}
-      </ControlGroup>
+      {showRestart && (
+        <ControlGroup label="Restart">
+          <RoundButton label="Restart from top" onClick={onRestart}>
+            <IconRestart className="h-5 w-5" />
+          </RoundButton>
+          {canSyncTempo && (
+            <button
+              type="button"
+              onClick={onSyncTempo}
+              className="text-stage-bg bg-stage-accent h-11 shrink-0 rounded-full px-3 text-xs font-semibold active:scale-95"
+            >
+              Sync to tempo
+            </button>
+          )}
+        </ControlGroup>
+      )}
 
       {canMetronome && (
         <ControlGroup label="Click">

@@ -1,4 +1,5 @@
 import type { AppSettings, NewSong, Setlist, Song } from '../types';
+import { DEFAULT_STAGE_CONTROLS } from '../types';
 import { estimateScrollSpeed } from '../lib/scrollSpeed';
 import { sampleSongs } from './sampleSongs';
 
@@ -26,6 +27,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   autoAdvanceToNextInSetlist: true,
   libraryGrouping: 'title',
   theme: 'dark',
+  stageControls: DEFAULT_STAGE_CONTROLS,
 };
 
 function readJson<T>(key: string, fallback: T): T {

@@ -13,6 +13,7 @@ import SetlistsPage from './pages/SetlistsPage';
 import SettingsPage from './pages/SettingsPage';
 import SongEditorPage from './pages/SongEditorPage';
 import StagePage from './pages/StagePage';
+import TunerPage from './pages/TunerPage';
 
 function AppLayout() {
   const showToast = useToast();
@@ -51,6 +52,7 @@ function App() {
               <Route path="/song/:songId/edit" element={<SongEditorPage />} />
               <Route path="/setlists" element={<SetlistsPage />} />
               <Route path="/setlists/:setlistId" element={<SetlistEditorPage />} />
+              <Route path="/tuner" element={<TunerPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
