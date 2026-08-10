@@ -12,6 +12,24 @@
     <title>LiveChords — Hands-Free Chords &amp; Lyrics</title>
   </head>
   <body>
+    <script>
+      // Applied synchronously, before first paint, so a saved light/system theme
+      // doesn't flash dark for a frame while React mounts and re-applies it.
+      (function () {
+        try {
+          var raw = localStorage.getItem('livechords:settings');
+          var theme = raw ? JSON.parse(raw).theme : null;
+          if (theme !== 'light' && theme !== 'dark') {
+            theme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+          }
+          document.documentElement.dataset.theme = theme;
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute('content', theme === 'light' ? '#f5f7fa' : '#0b0f14');
+        } catch (e) {
+          document.documentElement.dataset.theme = 'dark';
+        }
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

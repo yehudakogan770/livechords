@@ -88,7 +88,7 @@ When the [D]trumpet [G]sounds the [D]call`;
 /** Public-domain demo charts so a fresh install isn't an empty library. */
 export function sampleSongs(): Song[] {
   const t = now();
-  const base = { transpose: 0, createdAt: t, updatedAt: t };
+  const base = { transpose: 0, capo: 0, favorite: false, createdAt: t, updatedAt: t };
   return [
     {
       id: 'sample-amazing-grace',

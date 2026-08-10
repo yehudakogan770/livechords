@@ -1,11 +1,16 @@
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
+import { ChordDiagram } from '../components/ChordDiagram';
 import { ChordSheet } from '../components/ChordSheet';
+import { useConfirm } from '../components/ConfirmDialog';
 import { inputClass, labelClass } from '../components/formStyles';
-import { IconCamera, IconPrinter, IconTrash } from '../components/icons';
+import { IconCamera, IconCopy, IconDownload, IconPrinter, IconTrash, IconUpload } from '../components/icons';
+import { useToast } from '../components/Toast';
 import { createSong, deleteSong, getSong, getSongs, saveSong } from '../data/storage';
-import { parseSong } from '../lib/chordpro';
+import { extractChords, parseSong } from '../lib/chordpro';
+import { getChordShape } from '../lib/chordShapes';
 import type { OcrProgress } from '../lib/ocr';
+import { createTapTempo } from '../lib/tapTempo';
 import { STYLE_PRESETS, type NewSong, type Song } from '../types';
 
 const STARTER_CONTENT = `{c: Verse 1}
@@ -17,6 +22,8 @@ const STARTER_CONTENT = `{c: Verse 1}
 export default function SongEditorPage() {
   const { songId } = useParams<{ songId: string }>();
   const navigate = useNavigate();
+  const confirm = useConfirm();
+  const showToast = useToast();
   const existing = useMemo(() => (songId ? getSong(songId) : undefined), [songId]);
 
   const [title, setTitle] = useState('');
@@ -24,12 +31,20 @@ export default function SongEditorPage() {
   const [style, setStyle] = useState('');
   const [originalKey, setOriginalKey] = useState('');
   const [bpm, setBpm] = useState('');
+  const [capo, setCapo] = useState('');
   const [tags, setTags] = useState('');
   const [content, setContent] = useState(STARTER_CONTENT);
   const [error, setError] = useState<string | null>(null);
   const [scanProgress, setScanProgress] = useState<OcrProgress | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
+  const tapTempoRef = useRef(createTapTempo());
+
+  function handleTapTempo() {
+    const estimate = tapTempoRef.current.tap();
+    if (estimate) setBpm(String(estimate));
+  }
 
   const styleSuggestions = useMemo(() => {
     const used = getSongs()
@@ -44,6 +59,7 @@ export default function SongEditorPage() {
     setStyle(existing?.style ?? '');
     setOriginalKey(existing?.originalKey ?? '');
     setBpm(existing?.bpm ? String(existing.bpm) : '');
+    setCapo(existing?.capo ? String(existing.capo) : '');
     setTags(existing?.tags.join(', ') ?? '');
     setContent(existing?.content ?? STARTER_CONTENT);
     setError(null);
@@ -51,12 +67,41 @@ export default function SongEditorPage() {
 
   const parsedPreview = useMemo(() => parseSong(content), [content]);
 
-  function fillFromContent() {
-    const { meta } = parseSong(content);
+  const chordDiagrams = useMemo(
+    () =>
+      extractChords(content)
+        .map((chord) => ({ chord, shape: getChordShape(chord) }))
+        .filter((entry): entry is { chord: string; shape: NonNullable<ReturnType<typeof getChordShape>> } => entry.shape !== null),
+    [content],
+  );
+
+  function fillFromContent(sourceText: string = content) {
+    const { meta } = parseSong(sourceText);
     if (meta.title && !title.trim()) setTitle(meta.title);
     if (meta.artist && !artist.trim()) setArtist(meta.artist);
     if (meta.key && !originalKey.trim()) setOriginalKey(meta.key);
     if (meta.bpm && !bpm.trim()) setBpm(String(meta.bpm));
+  }
+
+  async function handleImportFile(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const text = await file.text();
+    setContent(text);
+    fillFromContent(text);
+    showToast(`Imported "${file.name}"`);
+  }
+
+  function handleExportFile() {
+    const filename = (title.trim() || 'song').replace(/[\\/:*?"<>|]+/g, '').trim() || 'song';
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${filename}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   async function handlePhotoSelected(e: ChangeEvent<HTMLInputElement>) {
@@ -91,6 +136,7 @@ export default function SongEditorPage() {
       style: style.trim(),
       originalKey: originalKey.trim(),
       bpm: Number.parseInt(bpm, 10) || 0,
+      capo: Number.parseInt(capo, 10) || 0,
       content,
       tags: tags
         .split(',')
@@ -110,11 +156,20 @@ export default function SongEditorPage() {
     navigate(andPerform ? `/stage/${song.id}` : '/');
   }
 
-  function handleDelete() {
+  async function handleDelete() {
     if (!existing) return;
-    if (!window.confirm(`Delete "${existing.title}"? This can't be undone.`)) return;
+    const ok = await confirm(`Delete "${existing.title}"?`, { danger: true, confirmLabel: 'Delete' });
+    if (!ok) return;
+    const deleted = existing;
     deleteSong(existing.id);
+    showToast(`Deleted "${deleted.title}"`, { label: 'Undo', onClick: () => saveSong(deleted) });
     navigate('/');
+  }
+
+  function handleDuplicate() {
+    if (!existing) return;
+    const copy = createSong({ ...buildInput(), title: `${existing.title} (copy)` });
+    navigate(`/song/${copy.id}/edit`);
   }
 
   return (
@@ -122,14 +177,32 @@ export default function SongEditorPage() {
       <div className="mb-4 flex items-center justify-between gap-3 print:hidden">
         <h1 className="text-xl font-semibold">{existing ? 'Edit Song' : 'New Song'}</h1>
         {existing && (
-          <button
-            type="button"
-            onClick={handleDelete}
-            className="text-stage-muted flex items-center gap-1 rounded-full px-3 py-1.5 text-sm hover:text-red-400"
-          >
-            <IconTrash className="h-4 w-4" />
-            Delete
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={handleExportFile}
+              className="text-stage-muted flex items-center gap-1 rounded-full px-3 py-1.5 text-sm hover:text-stage-text"
+            >
+              <IconDownload className="h-4 w-4" />
+              Export
+            </button>
+            <button
+              type="button"
+              onClick={handleDuplicate}
+              className="text-stage-muted flex items-center gap-1 rounded-full px-3 py-1.5 text-sm hover:text-stage-text"
+            >
+              <IconCopy className="h-4 w-4" />
+              Duplicate
+            </button>
+            <button
+              type="button"
+              onClick={handleDelete}
+              className="text-stage-muted flex items-center gap-1 rounded-full px-3 py-1.5 text-sm hover:text-red-400"
+            >
+              <IconTrash className="h-4 w-4" />
+              Delete
+            </button>
+          </div>
         )}
       </div>
 
@@ -179,7 +252,7 @@ export default function SongEditorPage() {
               ))}
             </datalist>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div>
               <label className={labelClass} htmlFor="song-key">
                 Key
@@ -193,9 +266,14 @@ export default function SongEditorPage() {
               />
             </div>
             <div>
-              <label className={labelClass} htmlFor="song-bpm">
-                BPM
-              </label>
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <label className={labelClass + ' mb-0'} htmlFor="song-bpm">
+                  BPM
+                </label>
+                <button type="button" onClick={handleTapTempo} className="text-stage-accent text-xs font-medium">
+                  Tap
+                </button>
+              </div>
               <input
                 id="song-bpm"
                 type="number"
@@ -205,6 +283,22 @@ export default function SongEditorPage() {
                 value={bpm}
                 onChange={(e) => setBpm(e.target.value)}
                 placeholder="70"
+              />
+            </div>
+            <div>
+              <label className={labelClass} htmlFor="song-capo">
+                Capo
+              </label>
+              <input
+                id="song-capo"
+                type="number"
+                inputMode="numeric"
+                min={0}
+                max={11}
+                className={inputClass}
+                value={capo}
+                onChange={(e) => setCapo(e.target.value)}
+                placeholder="0"
               />
             </div>
           </div>
@@ -236,8 +330,16 @@ export default function SongEditorPage() {
                   <IconCamera className="h-3.5 w-3.5" />
                   {scanProgress ? 'Scanning…' : 'Scan a photo'}
                 </button>
-                <button type="button" onClick={fillFromContent} className="text-stage-accent text-xs font-medium">
+                <button type="button" onClick={() => fillFromContent()} className="text-stage-accent text-xs font-medium">
                   Fill details from pasted chart
+                </button>
+                <button
+                  type="button"
+                  onClick={() => importInputRef.current?.click()}
+                  className="text-stage-accent flex items-center gap-1 text-xs font-medium"
+                >
+                  <IconUpload className="h-3.5 w-3.5" />
+                  Import file
                 </button>
               </div>
             </div>
@@ -248,6 +350,13 @@ export default function SongEditorPage() {
               capture="environment"
               className="hidden"
               onChange={handlePhotoSelected}
+            />
+            <input
+              ref={importInputRef}
+              type="file"
+              accept=".txt,.cho,.chordpro,.crd,text/plain"
+              className="hidden"
+              onChange={handleImportFile}
             />
             {scanProgress && (
               <div className="border-stage-edge bg-stage-panel mb-2 rounded-lg border px-3 py-2 text-xs">
@@ -350,6 +459,17 @@ export default function SongEditorPage() {
           <div className="hidden print:block">
             <ChordSheet song={parsedPreview} fontSizePx={26} />
           </div>
+
+          {chordDiagrams.length > 0 && (
+            <div className="border-stage-edge mt-4 border-t pt-3 print:hidden">
+              <p className={labelClass}>Chord diagrams</p>
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {chordDiagrams.map(({ chord, shape }) => (
+                  <ChordDiagram key={chord} shape={shape} label={chord} />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

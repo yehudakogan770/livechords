@@ -1,7 +1,10 @@
-import { useEffect, useState } from 'react';
+import { type PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
-import { IconPlay, IconTrash } from '../components/icons';
-import { getSetlist, getSongs, saveSetlist } from '../data/storage';
+import { ChordSheet } from '../components/ChordSheet';
+import { IconGripVertical, IconPlay, IconPrinter, IconTrash } from '../components/icons';
+import { getSettings, getSetlist, getSongs, saveSetlist } from '../data/storage';
+import { parseSong } from '../lib/chordpro';
+import { transposeContent } from '../lib/transpose';
 import type { Setlist, Song } from '../types';
 
 export default function SetlistEditorPage() {
@@ -9,7 +12,12 @@ export default function SetlistEditorPage() {
   const navigate = useNavigate();
   const [setlist, setSetlist] = useState<Setlist | undefined>(() => (setlistId ? getSetlist(setlistId) : undefined));
   const [allSongs] = useState<Song[]>(() => getSongs());
+  const [settings] = useState(getSettings);
   const [addingId, setAddingId] = useState('');
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+
+  const rowRefs = useRef<Map<string, HTMLLIElement>>(new Map());
+  const pointerIdRef = useRef<number | null>(null);
 
   useEffect(() => {
     setSetlist(setlistId ? getSetlist(setlistId) : undefined);
@@ -20,13 +28,19 @@ export default function SetlistEditorPage() {
     setSetlist(next);
   }
 
+  function reorder(from: number, to: number) {
+    if (!setlist || from === to) return;
+    const ids = [...setlist.songIds];
+    const [moved] = ids.splice(from, 1);
+    ids.splice(to, 0, moved);
+    persist({ ...setlist, songIds: ids });
+  }
+
   function moveSong(index: number, dir: -1 | 1) {
     if (!setlist) return;
-    const ids = [...setlist.songIds];
     const target = index + dir;
-    if (target < 0 || target >= ids.length) return;
-    [ids[index], ids[target]] = [ids[target], ids[index]];
-    persist({ ...setlist, songIds: ids });
+    if (target < 0 || target >= setlist.songIds.length) return;
+    reorder(index, target);
   }
 
   function removeSong(id: string) {
@@ -38,6 +52,47 @@ export default function SetlistEditorPage() {
     if (!setlist || !id || setlist.songIds.includes(id)) return;
     persist({ ...setlist, songIds: [...setlist.songIds, id] });
     setAddingId('');
+  }
+
+  function updateNote(songId: string, note: string) {
+    if (!setlist) return;
+    persist({ ...setlist, notes: { ...setlist.notes, [songId]: note } });
+  }
+
+  function handleGripPointerDown(e: ReactPointerEvent<HTMLButtonElement>, id: string) {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    pointerIdRef.current = e.pointerId;
+    setDraggingId(id);
+  }
+
+  function handleGripPointerMove(e: ReactPointerEvent<HTMLButtonElement>) {
+    if (!draggingId || !setlist) return;
+    const order = setlist.songIds;
+    const fromIndex = order.indexOf(draggingId);
+    if (fromIndex === -1) return;
+    const y = e.clientY;
+    for (const [id, el] of rowRefs.current) {
+      if (id === draggingId) continue;
+      const toIndex = order.indexOf(id);
+      const rect = el.getBoundingClientRect();
+      const midpoint = rect.top + rect.height / 2;
+      if ((fromIndex < toIndex && y > midpoint) || (fromIndex > toIndex && y < midpoint)) {
+        reorder(fromIndex, toIndex);
+        return;
+      }
+    }
+  }
+
+  function handleGripPointerUp(e: ReactPointerEvent<HTMLButtonElement>) {
+    if (pointerIdRef.current != null) {
+      try {
+        e.currentTarget.releasePointerCapture(pointerIdRef.current);
+      } catch {
+        // already released
+      }
+    }
+    pointerIdRef.current = null;
+    setDraggingId(null);
   }
 
   if (!setlist) {
@@ -60,37 +115,72 @@ export default function SetlistEditorPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
-      <div className="mb-4 flex items-center justify-between gap-3">
+      <div className="mb-4 flex items-center justify-between gap-3 print:hidden">
         <input
           value={setlist.name}
           onChange={(e) => persist({ ...setlist, name: e.target.value })}
           className="min-w-0 flex-1 bg-transparent text-xl font-semibold focus:outline-none"
         />
-        {songsInOrder.length > 0 && (
-          <button
-            type="button"
-            onClick={() => navigate(`/stage/${songsInOrder[0].id}?setlist=${setlist.id}`)}
-            className="bg-stage-accent text-stage-bg flex shrink-0 items-center gap-1 rounded-full px-4 py-2 text-sm font-semibold"
-          >
-            <IconPlay className="h-4 w-4" />
-            Perform
-          </button>
-        )}
+        <div className="flex shrink-0 items-center gap-2">
+          {songsInOrder.length > 0 && (
+            <button
+              type="button"
+              onClick={() => window.print()}
+              aria-label="Print or save setlist as PDF"
+              className="border-stage-edge text-stage-muted flex h-9 w-9 items-center justify-center rounded-full border"
+            >
+              <IconPrinter className="h-4 w-4" />
+            </button>
+          )}
+          {songsInOrder.length > 0 && (
+            <button
+              type="button"
+              onClick={() => navigate(`/stage/${songsInOrder[0].id}?setlist=${setlist.id}`)}
+              className="bg-stage-accent text-stage-bg flex items-center gap-1 rounded-full px-4 py-2 text-sm font-semibold"
+            >
+              <IconPlay className="h-4 w-4" />
+              Perform
+            </button>
+          )}
+        </div>
       </div>
 
       {songsInOrder.length === 0 ? (
-        <p className="text-stage-muted mb-6 text-sm">No songs yet — add some below.</p>
+        <p className="text-stage-muted mb-6 text-sm print:hidden">No songs yet — add some below.</p>
       ) : (
-        <ul className="mb-6 flex flex-col gap-2">
+        <ul className="mb-6 flex flex-col gap-2 print:hidden">
           {songsInOrder.map((song, i) => (
             <li
               key={song.id}
-              className="border-stage-edge bg-stage-panel flex items-center gap-2 rounded-lg border px-3 py-2"
+              ref={(el) => {
+                if (el) rowRefs.current.set(song.id, el);
+                else rowRefs.current.delete(song.id);
+              }}
+              className={`border-stage-edge bg-stage-panel flex items-center gap-2 rounded-lg border px-3 py-2 transition-shadow ${
+                draggingId === song.id ? 'ring-stage-accent ring-2' : ''
+              }`}
             >
+              <button
+                type="button"
+                aria-label={`Drag to reorder ${song.title}`}
+                onPointerDown={(e) => handleGripPointerDown(e, song.id)}
+                onPointerMove={handleGripPointerMove}
+                onPointerUp={handleGripPointerUp}
+                onPointerCancel={handleGripPointerUp}
+                className="text-stage-muted flex h-8 w-6 shrink-0 touch-none cursor-grab items-center justify-center active:cursor-grabbing"
+              >
+                <IconGripVertical className="h-4 w-4" />
+              </button>
               <span className="text-stage-muted w-5 shrink-0 text-right text-sm">{i + 1}</span>
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium">{song.title}</p>
                 <p className="text-stage-muted truncate text-sm">{song.artist || 'Unknown artist'}</p>
+                <input
+                  value={setlist.notes[song.id] ?? ''}
+                  onChange={(e) => updateNote(song.id, e.target.value)}
+                  placeholder="Note for this set (capo 2, key change…)"
+                  className="text-stage-chord placeholder:text-stage-muted/60 mt-1 w-full bg-transparent text-xs focus:outline-none"
+                />
               </div>
               <button
                 type="button"
@@ -124,7 +214,7 @@ export default function SetlistEditorPage() {
       )}
 
       {availableToAdd.length > 0 ? (
-        <div className="flex gap-2">
+        <div className="flex gap-2 print:hidden">
           <select
             value={addingId}
             onChange={(e) => setAddingId(e.target.value)}
@@ -149,7 +239,7 @@ export default function SetlistEditorPage() {
         </div>
       ) : (
         allSongs.length === 0 && (
-          <p className="text-stage-muted text-sm">
+          <p className="text-stage-muted text-sm print:hidden">
             Your library is empty.{' '}
             <Link to="/song/new" className="text-stage-accent">
               Add a song
@@ -158,6 +248,32 @@ export default function SetlistEditorPage() {
           </p>
         )
       )}
+
+      {/* Print-only: the whole setlist as sequential chart pages, one per song. */}
+      <div className="hidden print:block">
+        <h1 className="mb-6 text-2xl font-bold">{setlist.name}</h1>
+        {songsInOrder.map((song, i) => {
+          const parsed = parseSong(transposeContent(song.content, song.transpose, settings.accidentalPreference));
+          const noteForSong = setlist.notes[song.id];
+          return (
+            <div key={song.id} className={i < songsInOrder.length - 1 ? 'break-after-page' : ''}>
+              <h2 className="text-lg font-bold">{song.title}</h2>
+              <p className="mb-4 text-sm">
+                {[
+                  song.artist,
+                  song.style,
+                  song.originalKey && `Key ${song.originalKey}`,
+                  song.capo ? `Capo ${song.capo}` : '',
+                  noteForSong,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </p>
+              <ChordSheet song={parsed} fontSizePx={22} />
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
