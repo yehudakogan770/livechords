@@ -11,6 +11,7 @@ import { extractChords, parseSong } from '../lib/chordpro';
 import { getChordShape } from '../lib/chordShapes';
 import type { OcrProgress } from '../lib/ocr';
 import { createTapTempo } from '../lib/tapTempo';
+import { transposeChord } from '../lib/transpose';
 import { STYLE_PRESETS, type NewSong, type Song } from '../types';
 
 const STARTER_CONTENT = `{c: Verse 1}
@@ -32,6 +33,7 @@ export default function SongEditorPage() {
   const [originalKey, setOriginalKey] = useState('');
   const [bpm, setBpm] = useState('');
   const [capo, setCapo] = useState('');
+  const [transpose, setTranspose] = useState(0);
   const [tags, setTags] = useState('');
   const [content, setContent] = useState(STARTER_CONTENT);
   const [error, setError] = useState<string | null>(null);
@@ -60,6 +62,7 @@ export default function SongEditorPage() {
     setOriginalKey(existing?.originalKey ?? '');
     setBpm(existing?.bpm ? String(existing.bpm) : '');
     setCapo(existing?.capo ? String(existing.capo) : '');
+    setTranspose(existing?.transpose ?? 0);
     setTags(existing?.tags.join(', ') ?? '');
     setContent(existing?.content ?? STARTER_CONTENT);
     setError(null);
@@ -137,6 +140,7 @@ export default function SongEditorPage() {
       originalKey: originalKey.trim(),
       bpm: Number.parseInt(bpm, 10) || 0,
       capo: Number.parseInt(capo, 10) || 0,
+      transpose,
       content,
       tags: tags
         .split(',')
@@ -252,7 +256,7 @@ export default function SongEditorPage() {
               ))}
             </datalist>
           </div>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <div>
               <label className={labelClass} htmlFor="song-key">
                 Key
@@ -300,6 +304,26 @@ export default function SongEditorPage() {
                 onChange={(e) => setCapo(e.target.value)}
                 placeholder="0"
               />
+            </div>
+            <div>
+              <label className={labelClass} htmlFor="song-transpose">
+                Transpose
+              </label>
+              <input
+                id="song-transpose"
+                type="number"
+                inputMode="numeric"
+                min={-11}
+                max={11}
+                className={inputClass}
+                value={transpose}
+                onChange={(e) => setTranspose(Number(e.target.value) || 0)}
+              />
+              {originalKey.trim() && transpose !== 0 && (
+                <p className="text-stage-muted mt-1 text-xs">
+                  Plays in {transposeChord(originalKey.trim(), transpose)}
+                </p>
+              )}
             </div>
           </div>
           <div>
