@@ -11,6 +11,7 @@ import { extractChords, parseSong } from '../lib/chordpro';
 import { getChordShape } from '../lib/chordShapes';
 import type { OcrProgress } from '../lib/ocr';
 import { createTapTempo } from '../lib/tapTempo';
+import { transposeChord } from '../lib/transpose';
 import { STYLE_PRESETS, type NewSong, type Song } from '../types';
 
 const STARTER_CONTENT = `{c: Verse 1}
@@ -32,6 +33,7 @@ export default function SongEditorPage() {
   const [originalKey, setOriginalKey] = useState('');
   const [bpm, setBpm] = useState('');
   const [capo, setCapo] = useState('');
+  const [transpose, setTranspose] = useState(0);
   const [tags, setTags] = useState('');
   const [content, setContent] = useState(STARTER_CONTENT);
   const [error, setError] = useState<string | null>(null);
@@ -60,6 +62,7 @@ export default function SongEditorPage() {
     setOriginalKey(existing?.originalKey ?? '');
     setBpm(existing?.bpm ? String(existing.bpm) : '');
     setCapo(existing?.capo ? String(existing.capo) : '');
+    setTranspose(existing?.transpose ?? 0);
     setTags(existing?.tags.join(', ') ?? '');
     setContent(existing?.content ?? STARTER_CONTENT);
     setError(null);
@@ -87,10 +90,39 @@ export default function SongEditorPage() {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    const text = await file.text();
-    setContent(text);
-    fillFromContent(text);
-    showToast(`Imported "${file.name}"`);
+
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    if (!isPdf) {
+      const text = await file.text();
+      setContent(text);
+      fillFromContent(text);
+      showToast(`Imported "${file.name}"`);
+      return;
+    }
+
+    setScanError(null);
+    setScanProgress({ status: 'starting', progress: 0 });
+    // pdf.js is sizeable and rarely used, so it's loaded on demand, like the OCR engine.
+    const { extractPdfChart, PdfNoTextLayerError } = await import('../lib/pdfImport');
+    try {
+      const extracted = await extractPdfChart(file, setScanProgress);
+      if (!extracted.trim()) {
+        setScanError('No text could be read from that PDF.');
+        return;
+      }
+      const isBlankSlate = content.trim() === '' || content.trim() === STARTER_CONTENT.trim();
+      setContent(isBlankSlate ? extracted : `${content}\n\n${extracted}`);
+      fillFromContent(extracted);
+      showToast(`Imported "${file.name}"`);
+    } catch (err) {
+      setScanError(
+        err instanceof PdfNoTextLayerError
+          ? `${err.message} Try "Scan a photo" on a screenshot of it instead.`
+          : 'Could not read that PDF.',
+      );
+    } finally {
+      setScanProgress(null);
+    }
   }
 
   function handleExportFile() {
@@ -137,6 +169,7 @@ export default function SongEditorPage() {
       originalKey: originalKey.trim(),
       bpm: Number.parseInt(bpm, 10) || 0,
       capo: Number.parseInt(capo, 10) || 0,
+      transpose,
       content,
       tags: tags
         .split(',')
@@ -252,7 +285,7 @@ export default function SongEditorPage() {
               ))}
             </datalist>
           </div>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <div>
               <label className={labelClass} htmlFor="song-key">
                 Key
@@ -301,6 +334,26 @@ export default function SongEditorPage() {
                 placeholder="0"
               />
             </div>
+            <div>
+              <label className={labelClass} htmlFor="song-transpose">
+                Transpose
+              </label>
+              <input
+                id="song-transpose"
+                type="number"
+                inputMode="numeric"
+                min={-11}
+                max={11}
+                className={inputClass}
+                value={transpose}
+                onChange={(e) => setTranspose(Number(e.target.value) || 0)}
+              />
+              {originalKey.trim() && transpose !== 0 && (
+                <p className="text-stage-muted mt-1 text-xs">
+                  Plays in {transposeChord(originalKey.trim(), transpose)}
+                </p>
+              )}
+            </div>
           </div>
           <div>
             <label className={labelClass} htmlFor="song-tags">
@@ -336,10 +389,11 @@ export default function SongEditorPage() {
                 <button
                   type="button"
                   onClick={() => importInputRef.current?.click()}
-                  className="text-stage-accent flex items-center gap-1 text-xs font-medium"
+                  disabled={scanProgress !== null}
+                  className="text-stage-accent flex items-center gap-1 text-xs font-medium disabled:opacity-50"
                 >
                   <IconUpload className="h-3.5 w-3.5" />
-                  Import file
+                  {scanProgress ? 'Reading…' : 'Import file or PDF'}
                 </button>
               </div>
             </div>
@@ -354,7 +408,7 @@ export default function SongEditorPage() {
             <input
               ref={importInputRef}
               type="file"
-              accept=".txt,.cho,.chordpro,.crd,text/plain"
+              accept=".txt,.cho,.chordpro,.crd,.pdf,application/pdf,text/plain"
               className="hidden"
               onChange={handleImportFile}
             />
@@ -396,6 +450,11 @@ export default function SongEditorPage() {
                 <li>
                   "Scan a photo" reads chords and lyrics off a printed page automatically — it's a best-effort
                   reading, so check chord placement before saving
+                </li>
+                <li>
+                  "Import file or PDF" reads a .txt/.cho file directly, or a PDF's real text layer (digitally
+                  created charts — CCLI, Planning Center, "print to PDF" exports, ...). A scanned/image-only PDF has
+                  no text to read — use "Scan a photo" on a screenshot of it instead
                 </li>
               </ul>
             </details>

@@ -65,6 +65,21 @@ export type LibraryGrouping = 'title' | 'artist' | 'style';
 
 export type Theme = 'dark' | 'light' | 'system';
 
+/** Optional Stage View controls a performer can show/hide, so "Live" stays as lean as they want it. */
+export type StageControl = 'fontSize' | 'transpose' | 'scrollSpeed' | 'restart' | 'nashville' | 'metronome';
+
+export const STAGE_CONTROL_LABELS: { control: StageControl; label: string }[] = [
+  { control: 'fontSize', label: 'Text size +/-' },
+  { control: 'transpose', label: 'Transpose (key) +/-' },
+  { control: 'scrollSpeed', label: 'Scroll speed +/-' },
+  { control: 'restart', label: 'Restart / sync to tempo' },
+  { control: 'nashville', label: 'Nashville Number System toggle' },
+  { control: 'metronome', label: 'Metronome click' },
+];
+
+/** Play/pause is always shown — everything else defaults on except the two "extra tool" toggles. */
+export const DEFAULT_STAGE_CONTROLS: StageControl[] = ['fontSize', 'transpose', 'scrollSpeed', 'restart'];
+
 export interface AppSettings {
   pedalKeyMap: PedalKeyMap;
   defaultFontSizePx: number;
@@ -74,6 +89,7 @@ export interface AppSettings {
   autoAdvanceToNextInSetlist: boolean;
   libraryGrouping: LibraryGrouping;
   theme: Theme;
+  stageControls: StageControl[];
 }
 
 /** Common genres for the Style suggestion list; the editor also suggests whatever styles are already in use. */
