@@ -90,10 +90,39 @@ export default function SongEditorPage() {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    const text = await file.text();
-    setContent(text);
-    fillFromContent(text);
-    showToast(`Imported "${file.name}"`);
+
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    if (!isPdf) {
+      const text = await file.text();
+      setContent(text);
+      fillFromContent(text);
+      showToast(`Imported "${file.name}"`);
+      return;
+    }
+
+    setScanError(null);
+    setScanProgress({ status: 'starting', progress: 0 });
+    // pdf.js is sizeable and rarely used, so it's loaded on demand, like the OCR engine.
+    const { extractPdfChart, PdfNoTextLayerError } = await import('../lib/pdfImport');
+    try {
+      const extracted = await extractPdfChart(file, setScanProgress);
+      if (!extracted.trim()) {
+        setScanError('No text could be read from that PDF.');
+        return;
+      }
+      const isBlankSlate = content.trim() === '' || content.trim() === STARTER_CONTENT.trim();
+      setContent(isBlankSlate ? extracted : `${content}\n\n${extracted}`);
+      fillFromContent(extracted);
+      showToast(`Imported "${file.name}"`);
+    } catch (err) {
+      setScanError(
+        err instanceof PdfNoTextLayerError
+          ? `${err.message} Try "Scan a photo" on a screenshot of it instead.`
+          : 'Could not read that PDF.',
+      );
+    } finally {
+      setScanProgress(null);
+    }
   }
 
   function handleExportFile() {
@@ -360,10 +389,11 @@ export default function SongEditorPage() {
                 <button
                   type="button"
                   onClick={() => importInputRef.current?.click()}
-                  className="text-stage-accent flex items-center gap-1 text-xs font-medium"
+                  disabled={scanProgress !== null}
+                  className="text-stage-accent flex items-center gap-1 text-xs font-medium disabled:opacity-50"
                 >
                   <IconUpload className="h-3.5 w-3.5" />
-                  Import file
+                  {scanProgress ? 'Reading…' : 'Import file or PDF'}
                 </button>
               </div>
             </div>
@@ -378,7 +408,7 @@ export default function SongEditorPage() {
             <input
               ref={importInputRef}
               type="file"
-              accept=".txt,.cho,.chordpro,.crd,text/plain"
+              accept=".txt,.cho,.chordpro,.crd,.pdf,application/pdf,text/plain"
               className="hidden"
               onChange={handleImportFile}
             />
@@ -420,6 +450,11 @@ export default function SongEditorPage() {
                 <li>
                   "Scan a photo" reads chords and lyrics off a printed page automatically — it's a best-effort
                   reading, so check chord placement before saving
+                </li>
+                <li>
+                  "Import file or PDF" reads a .txt/.cho file directly, or a PDF's real text layer (digitally
+                  created charts — CCLI, Planning Center, "print to PDF" exports, ...). A scanned/image-only PDF has
+                  no text to read — use "Scan a photo" on a screenshot of it instead
                 </li>
               </ul>
             </details>

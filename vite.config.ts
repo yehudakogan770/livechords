@@ -36,6 +36,10 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // pdfjs-dist (used for PDF import) is dynamically imported and sizeable —
+        // it should only be fetched the first time someone actually imports a PDF,
+        // like the OCR engine, not downloaded by every user on install.
+        globIgnores: ['**/pdf-*.js'],
       },
     }),
   ],
